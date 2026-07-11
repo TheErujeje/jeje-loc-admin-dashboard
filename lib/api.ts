@@ -1,0 +1,116 @@
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+
+export interface AdminUser {
+  id: string
+  email: string
+  full_name: string
+  role: string
+}
+
+export interface User {
+  fpl_entry_id: number
+  email: string
+  full_name: string
+  fpl_team_name: string
+  status: string
+  created_at: string
+}
+
+export interface Payout {
+  id: string
+  season_id: string
+  prize_rule_id: string
+  event_id: number | null
+  user_id: number
+  amount_kobo: number
+  status: string
+  calculated_at: string
+  approved_at: string | null
+  paid_at: string | null
+}
+
+async function handle<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Request failed (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function adminLogin(email: string, password: string) {
+  const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  return handle<{ access_token: string; refresh_token: string }>(res)
+}
+
+export async function fetchUsers(token: string) {
+  const res = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return handle<User[]>(res)
+}
+
+export async function fetchPayouts(token: string, status?: string) {
+  const url = new URL(`${API_BASE_URL}/payouts`)
+  if (status) url.searchParams.set('status_filter', status)
+  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+  return handle<Payout[]>(res)
+}
+
+export async function triggerSyncAndCalculate(token: string, seasonId: string) {
+  const res = await fetch(`${API_BASE_URL}/payouts/sync-and-calculate/${seasonId}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return handle<{ newly_final_gameweeks: number[]; payouts_created: number }>(res)
+}
+
+export async function fetchCurrentSeason() {
+  const res = await fetch(`${API_BASE_URL}/fpl/seasons/current`)
+  return handle<{ id: string; label: string; status: string }>(res)
+}
+
+export interface PrizeRule {
+  id: string
+  season_id: string
+  label: string
+  scope: string
+  competition_type: string
+  rank_target: number
+  amount_kobo: number
+  is_active: boolean
+}
+
+export async function fetchPrizeRules(token: string, seasonId: string) {
+  const res = await fetch(`${API_BASE_URL}/admin/prize-rules?season_id=${seasonId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return handle<PrizeRule[]>(res)
+}
+
+export async function createPrizeRule(
+  token: string,
+  body: {
+    season_id: string
+    label: string
+    scope: string
+    competition_type: string
+    rank_target: number
+    amount_kobo: number
+  }
+) {
+  const res = await fetch(`${API_BASE_URL}/admin/prize-rules`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  })
+  return handle<PrizeRule>(res)
+}
+
+export async function approvePayoutByToken(token: string) {
+  const res = await fetch(`${API_BASE_URL}/payouts/approve?token=${encodeURIComponent(token)}`)
+  return handle<{ payout_id: string; status: string; message: string }>(res)
+}
