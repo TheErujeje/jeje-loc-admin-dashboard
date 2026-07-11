@@ -7,7 +7,7 @@ Next.js 14 app for managing LOC: users, prize rules, and the payout queue.
 ```bash
 npm install
 cp .env.example .env.local   # set NEXT_PUBLIC_API_BASE_URL
-npm run dev   # runs on :3002
+npm run dev   # runs on :3052
 ```
 
 ## Pages
@@ -16,7 +16,7 @@ npm run dev   # runs on :3002
 - `/payouts` — read-only view of every payout and its status, plus a manual "Sync & Calculate Now" button (same logic the backend scheduler runs automatically every 15 minutes).
 - `/users` — every registered manager.
 - `/prize-rules` — configure what gets paid out and to which rank (gameweek winner, season overall, H2H cup, etc.) — these drive what the payout engine calculates.
-- `/payouts/approve?token=...` — **this is the page the "Approve payout" link in the admin notification email points to.** No login needed — the token itself is the one-time credential. Landing here immediately approves the payout and fires the Paystack transfer. Set `PAYOUT_APPROVAL_BASE_URL` in the backend's `.env` to `http://localhost:3002/payouts/approve` (or your deployed URL) so the emailed links point here.
+- `/payouts/approve?token=...` — **this is the page the "Approve payout" link in the admin notification email points to.** No login needed — the token itself is the one-time credential. Landing here immediately approves the payout and fires the Paystack transfer. Set `PAYOUT_APPROVAL_BASE_URL` in the backend's `.env` to `http://localhost:3052/payouts/approve` (or your deployed URL) so the emailed links point here.
 
 ## Still needed
 
