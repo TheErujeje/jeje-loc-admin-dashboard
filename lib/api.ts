@@ -110,6 +110,39 @@ export async function createPrizeRule(
   return handle<PrizeRule>(res)
 }
 
+export interface Season {
+  id: string
+  label: string
+  status: string
+  fpl_classic_league_id: number
+  fpl_league_name: string | null
+  fpl_league_join_code: string | null
+  entry_fee_kobo: number
+  currency: string
+  registration_opens_at: string | null
+  registration_closes_at: string | null
+  season_ends_at: string | null
+  fpl_start_event: number | null
+  fpl_end_event: number | null
+  created_at: string
+}
+
+export async function fetchSeasons(token: string) {
+  const res = await fetch(`${API_BASE_URL}/admin/seasons`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return handle<Season[]>(res)
+}
+
+export async function updateSeasonEndsAt(token: string, seasonId: string, seasonEndsAt: string | null) {
+  const res = await fetch(`${API_BASE_URL}/admin/seasons/${seasonId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ season_ends_at: seasonEndsAt }),
+  })
+  return handle<Season>(res)
+}
+
 export async function approvePayoutByToken(token: string) {
   const res = await fetch(`${API_BASE_URL}/payouts/approve?token=${encodeURIComponent(token)}`)
   return handle<{ payout_id: string; status: string; message: string }>(res)

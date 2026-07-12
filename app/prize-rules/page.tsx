@@ -1,15 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Loader2, Plus } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { fetchCurrentSeason, fetchPrizeRules, createPrizeRule, type PrizeRule } from '@/lib/api'
-import { AdminHeader } from '@/components/AdminHeader'
+import { AdminLayout } from '@/components/AdminLayout'
 
 export default function PrizeRulesPage() {
-  const { token, loading } = useAuth()
-  const router = useRouter()
+  const { token } = useAuth()
   const [seasonId, setSeasonId] = useState<string | null>(null)
   const [rules, setRules] = useState<PrizeRule[]>([])
   const [form, setForm] = useState({
@@ -21,10 +19,6 @@ export default function PrizeRulesPage() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!loading && !token) router.replace('/login')
-  }, [loading, token, router])
 
   const load = async () => {
     if (!token) return
@@ -60,19 +54,9 @@ export default function PrizeRulesPage() {
     }
   }
 
-  if (loading || !token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-pitch-green animate-spin" />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen">
-      <AdminHeader />
-      <main className="max-w-4xl mx-auto px-4 sm:px-8 py-10 space-y-10">
-        <h1 className="text-2xl font-heading font-bold">Prize Rules</h1>
+    <AdminLayout>
+      <h1 className="text-2xl font-heading font-bold">Prize Rules</h1>
 
         <form onSubmit={handleSubmit} className="bg-stadium-800 border border-stadium-700 rounded-sm p-6 space-y-4">
           <h2 className="font-heading text-sm tracking-wide text-gray-400">ADD A PRIZE RULE</h2>
@@ -164,7 +148,6 @@ export default function PrizeRulesPage() {
             </tbody>
           </table>
         </div>
-      </main>
-    </div>
+    </AdminLayout>
   )
 }
