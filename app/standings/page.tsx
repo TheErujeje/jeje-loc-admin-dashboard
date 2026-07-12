@@ -3,33 +3,17 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { fetchSeasons, fetchStandings, type Season, type StandingRow } from '@/lib/api'
+import { useSeason } from '@/lib/season'
+import { fetchStandings, type StandingRow } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
-
-const ACTIVE_STATUSES = ['active', 'registration_open']
 
 export default function StandingsPage() {
   const { token } = useAuth()
-  const [seasons, setSeasons] = useState<Season[]>([])
-  const [seasonId, setSeasonId] = useState<string>('')
-  const [seasonsLoading, setSeasonsLoading] = useState(true)
+  const { seasonId } = useSeason()
   const [standings, setStandings] = useState<StandingRow[]>([])
   const [eventId, setEventId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!token) return
-    fetchSeasons(token)
-      .then((data) => {
-        setSeasons(data)
-        const active = data.find((s) => ACTIVE_STATUSES.includes(s.status))
-        setSeasonId((active || data[0])?.id || '')
-        if (data.length === 0) setError('No seasons found.')
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
-      .finally(() => setSeasonsLoading(false))
-  }, [token])
 
   useEffect(() => {
     if (!token || !seasonId) return
@@ -46,27 +30,12 @@ export default function StandingsPage() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-heading font-bold">
-          Standings {eventId ? `— GW${eventId}` : ''}
-        </h1>
-        <select
-          value={seasonId}
-          onChange={(e) => setSeasonId(e.target.value)}
-          className="bg-stadium-800 border border-stadium-700 rounded-sm px-4 py-2 text-sm font-heading tracking-wide"
-        >
-          {seasons.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label} {ACTIVE_STATUSES.includes(s.status) ? '(active)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
+      <h1 className="text-2xl font-heading font-bold">Standings {eventId ? `— GW${eventId}` : ''}</h1>
 
-      {(seasonsLoading || loading) && <Loader2 className="h-6 w-6 text-pitch-green animate-spin" />}
+      {loading && <Loader2 className="h-6 w-6 text-pitch-green animate-spin" />}
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      {!seasonsLoading && !loading && !error && (
+      {!loading && !error && (
         <div className="overflow-x-auto rounded-sm border border-stadium-700">
           <table className="w-full text-sm">
             <thead className="bg-stadium-800 text-gray-400 text-left">

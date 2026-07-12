@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { useSeason } from '@/lib/season'
 import { fetchPayouts, fetchCurrentSeason, triggerSyncAndCalculate, type Payout } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 
@@ -18,18 +19,19 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function PayoutsPage() {
   const { token } = useAuth()
+  const { seasonId } = useSeason()
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
   const load = () => {
-    if (!token) return
-    fetchPayouts(token)
+    if (!token || !seasonId) return
+    fetchPayouts(token, seasonId)
       .then(setPayouts)
       .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load payouts'))
   }
 
-  useEffect(load, [token])
+  useEffect(load, [token, seasonId])
 
   const handleSync = async () => {
     if (!token) return

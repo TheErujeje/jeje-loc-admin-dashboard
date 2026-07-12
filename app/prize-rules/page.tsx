@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { fetchCurrentSeason, fetchPrizeRules, createPrizeRule, type PrizeRule } from '@/lib/api'
+import { useSeason } from '@/lib/season'
+import { fetchPrizeRules, createPrizeRule, type PrizeRule } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 
 export default function PrizeRulesPage() {
   const { token } = useAuth()
-  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const { seasonId } = useSeason()
   const [rules, setRules] = useState<PrizeRule[]>([])
   const [form, setForm] = useState({
     label: '',
@@ -21,15 +22,13 @@ export default function PrizeRulesPage() {
   const [error, setError] = useState<string | null>(null)
 
   const load = async () => {
-    if (!token) return
-    const season = await fetchCurrentSeason()
-    setSeasonId(season.id)
-    setRules(await fetchPrizeRules(token, season.id))
+    if (!token || !seasonId) return
+    setRules(await fetchPrizeRules(token, seasonId))
   }
 
   useEffect(() => {
     load().catch((err) => setError(err instanceof Error ? err.message : 'Could not load prize rules'))
-  }, [token])
+  }, [token, seasonId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

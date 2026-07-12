@@ -83,9 +83,10 @@ export async function fetchSeasonUsers(token: string, seasonId: string) {
   return handle<SeasonUser[]>(res)
 }
 
-export async function fetchPayouts(token: string, status?: string) {
+export async function fetchPayouts(token: string, seasonId?: string, status?: string) {
   const url = new URL(`${API_BASE_URL}/payouts`)
   if (status) url.searchParams.set('status_filter', status)
+  if (seasonId) url.searchParams.set('season_id', seasonId)
   const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
   return handle<Payout[]>(res)
 }

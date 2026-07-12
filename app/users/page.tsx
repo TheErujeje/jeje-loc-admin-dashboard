@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth'
-import { fetchSeasons, fetchSeasonUsers, type Season, type SeasonUser } from '@/lib/api'
+import { useSeason, ACTIVE_STATUSES } from '@/lib/season'
+import { fetchSeasonUsers, type SeasonUser } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
-
-const ACTIVE_STATUSES = ['active', 'registration_open']
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'text-pitch-green',
@@ -14,22 +13,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function UsersPage() {
   const { token } = useAuth()
-  const [seasons, setSeasons] = useState<Season[]>([])
-  const [seasonId, setSeasonId] = useState<string>('')
+  const { seasonId, selectedSeason } = useSeason()
   const [users, setUsers] = useState<SeasonUser[]>([])
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!token) return
-    fetchSeasons(token)
-      .then((data) => {
-        setSeasons(data)
-        const active = data.find((s) => ACTIVE_STATUSES.includes(s.status))
-        setSeasonId((active || data[0])?.id || '')
-        if (data.length === 0) setError('No seasons found.')
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
-  }, [token])
 
   useEffect(() => {
     if (!token || !seasonId) return
@@ -38,24 +24,9 @@ export default function UsersPage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load users'))
   }, [token, seasonId])
 
-  const selectedSeason = seasons.find((s) => s.id === seasonId)
-
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-heading font-bold">Registered Managers ({users.length})</h1>
-        <select
-          value={seasonId}
-          onChange={(e) => setSeasonId(e.target.value)}
-          className="bg-stadium-800 border border-stadium-700 rounded-sm px-4 py-2 text-sm font-heading tracking-wide"
-        >
-          {seasons.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label} {ACTIVE_STATUSES.includes(s.status) ? '(active)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
+      <h1 className="text-2xl font-heading font-bold">Registered Managers ({users.length})</h1>
 
       {selectedSeason && !ACTIVE_STATUSES.includes(selectedSeason.status) && (
         <p className="text-sm text-gray-500">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Oswald } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth'
+import { SeasonProvider } from '@/lib/season'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const oswald = Oswald({ subsets: ['latin'], variable: '--font-oswald' })
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
       <body className="min-h-screen bg-stadium-900 text-white font-body">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <SeasonProvider>{children}</SeasonProvider>
+        </AuthProvider>
       </body>
     </html>
   )

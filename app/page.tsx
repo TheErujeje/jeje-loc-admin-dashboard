@@ -10,7 +10,7 @@ export default function IndexPage() {
 
   useEffect(() => {
     if (loading) return
-    router.replace(token ? '/payouts' : '/login')
+    router.replace(token ? '/standings' : '/login')
   }, [loading, token, router])
 
   return null
