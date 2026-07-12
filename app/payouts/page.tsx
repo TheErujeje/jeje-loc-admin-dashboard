@@ -24,7 +24,9 @@ export default function PayoutsPage() {
 
   const load = () => {
     if (!token) return
-    fetchPayouts(token).then(setPayouts).catch(() => {})
+    fetchPayouts(token)
+      .then(setPayouts)
+      .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load payouts'))
   }
 
   useEffect(load, [token])

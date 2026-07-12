@@ -12,9 +12,10 @@ export default function StandingsPage() {
   const { token } = useAuth()
   const [seasons, setSeasons] = useState<Season[]>([])
   const [seasonId, setSeasonId] = useState<string>('')
+  const [seasonsLoading, setSeasonsLoading] = useState(true)
   const [standings, setStandings] = useState<StandingRow[]>([])
   const [eventId, setEventId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,8 +25,10 @@ export default function StandingsPage() {
         setSeasons(data)
         const active = data.find((s) => ACTIVE_STATUSES.includes(s.status))
         setSeasonId((active || data[0])?.id || '')
+        if (data.length === 0) setError('No seasons found.')
       })
-      .catch(() => {})
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
+      .finally(() => setSeasonsLoading(false))
   }, [token])
 
   useEffect(() => {
@@ -60,10 +63,10 @@ export default function StandingsPage() {
         </select>
       </div>
 
-      {loading && <Loader2 className="h-6 w-6 text-pitch-green animate-spin" />}
+      {(seasonsLoading || loading) && <Loader2 className="h-6 w-6 text-pitch-green animate-spin" />}
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      {!loading && !error && (
+      {!seasonsLoading && !loading && !error && (
         <div className="overflow-x-auto rounded-sm border border-stadium-700">
           <table className="w-full text-sm">
             <thead className="bg-stadium-800 text-gray-400 text-left">

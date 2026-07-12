@@ -17,6 +17,7 @@ export default function UsersPage() {
   const [seasons, setSeasons] = useState<Season[]>([])
   const [seasonId, setSeasonId] = useState<string>('')
   const [users, setUsers] = useState<SeasonUser[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -25,12 +26,16 @@ export default function UsersPage() {
         setSeasons(data)
         const active = data.find((s) => ACTIVE_STATUSES.includes(s.status))
         setSeasonId((active || data[0])?.id || '')
+        if (data.length === 0) setError('No seasons found.')
       })
-      .catch(() => {})
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
   }, [token])
 
   useEffect(() => {
-    if (token && seasonId) fetchSeasonUsers(token, seasonId).then(setUsers).catch(() => {})
+    if (!token || !seasonId) return
+    fetchSeasonUsers(token, seasonId)
+      .then(setUsers)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load users'))
   }, [token, seasonId])
 
   const selectedSeason = seasons.find((s) => s.id === seasonId)
@@ -57,6 +62,8 @@ export default function UsersPage() {
           Viewing a past season — {selectedSeason.label} is {selectedSeason.status}.
         </p>
       )}
+
+      {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <div className="overflow-x-auto rounded-sm border border-stadium-700">
         <table className="w-full text-sm">

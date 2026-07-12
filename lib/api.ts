@@ -30,6 +30,17 @@ export interface Payout {
 }
 
 async function handle<T>(res: Response): Promise<T> {
+  if (res.status === 401) {
+    // Access token expired (30 min TTL) or invalid — every admin page shares this
+    // fetch path, so handling it once here means a stale session always sends the
+    // user back to /login instead of pages getting stuck silently mid-fetch.
+    localStorage.removeItem('loc_admin_access_token')
+    localStorage.removeItem('loc_admin_refresh_token')
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
+    throw new Error('Session expired — please log in again')
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.detail || `Request failed (${res.status})`)

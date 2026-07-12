@@ -30,7 +30,7 @@ export default function ConfigurationPage() {
         setSeasons(data)
         setEndsAtDraft(Object.fromEntries(data.map((s) => [s.id, toDatetimeLocal(s.season_ends_at)])))
       })
-      .catch(() => {})
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
   }
 
   useEffect(load, [token])

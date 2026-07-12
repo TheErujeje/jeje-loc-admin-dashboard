@@ -28,7 +28,7 @@ export default function PrizeRulesPage() {
   }
 
   useEffect(() => {
-    load().catch(() => {})
+    load().catch((err) => setError(err instanceof Error ? err.message : 'Could not load prize rules'))
   }, [token])
 
   const handleSubmit = async (e: React.FormEvent) => {
