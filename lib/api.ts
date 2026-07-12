@@ -194,6 +194,25 @@ export async function createPrizeRule(body: {
   return handle<PrizeRule>(res)
 }
 
+export async function updatePrizeRule(
+  ruleId: string,
+  body: Partial<{
+    label: string
+    scope: string
+    competition_type: string
+    rank_target: number
+    amount_kobo: number
+    is_active: boolean
+  }>
+) {
+  const res = await authedFetch(`/admin/prize-rules/${ruleId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return handle<PrizeRule>(res)
+}
+
 export interface Season {
   id: string
   label: string
