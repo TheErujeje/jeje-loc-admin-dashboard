@@ -20,10 +20,14 @@ export interface Payout {
   id: string
   season_id: string
   prize_rule_id: string
+  prize_rule_label: string | null
   event_id: number | null
   user_id: number
+  full_name: string | null
+  fpl_team_name: string | null
   amount_kobo: number
   status: string
+  failure_reason: string | null
   calculated_at: string
   approved_at: string | null
   paid_at: string | null
