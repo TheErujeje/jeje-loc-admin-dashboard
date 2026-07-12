@@ -53,6 +53,25 @@ export async function fetchUsers(token: string) {
   return handle<User[]>(res)
 }
 
+export interface SeasonUser {
+  fpl_entry_id: number
+  email: string
+  full_name: string
+  fpl_team_name: string
+  phone: string | null
+  league_entry_status: string
+  in_h2h: boolean
+  registered_at: string
+  joined_at: string | null
+}
+
+export async function fetchSeasonUsers(token: string, seasonId: string) {
+  const res = await fetch(`${API_BASE_URL}/admin/seasons/${seasonId}/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return handle<SeasonUser[]>(res)
+}
+
 export async function fetchPayouts(token: string, status?: string) {
   const url = new URL(`${API_BASE_URL}/payouts`)
   if (status) url.searchParams.set('status_filter', status)
