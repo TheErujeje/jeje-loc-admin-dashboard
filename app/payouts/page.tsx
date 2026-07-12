@@ -26,7 +26,7 @@ export default function PayoutsPage() {
 
   const load = () => {
     if (!token || !seasonId) return
-    fetchPayouts(token, seasonId)
+    fetchPayouts(seasonId)
       .then(setPayouts)
       .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load payouts'))
   }
@@ -39,7 +39,7 @@ export default function PayoutsPage() {
     setMessage(null)
     try {
       const season = await fetchCurrentSeason()
-      const result = await triggerSyncAndCalculate(token, season.id)
+      const result = await triggerSyncAndCalculate(season.id)
       setMessage(
         result.newly_final_gameweeks.length
           ? `Synced GW ${result.newly_final_gameweeks.join(', ')} — ${result.payouts_created} payout(s) created.`

@@ -26,7 +26,7 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!token) return
-    fetchSeasons(token)
+    fetchSeasons()
       .then((data) => {
         setSeasons(data)
         const active = data.find((s) => ACTIVE_STATUSES.includes(s.status))

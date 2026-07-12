@@ -19,7 +19,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!token || !seasonId) return
-    fetchSeasonUsers(token, seasonId)
+    fetchSeasonUsers(seasonId)
       .then(setUsers)
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load users'))
   }, [token, seasonId])

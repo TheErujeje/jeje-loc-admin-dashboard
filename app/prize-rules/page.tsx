@@ -23,7 +23,7 @@ export default function PrizeRulesPage() {
 
   const load = async () => {
     if (!token || !seasonId) return
-    setRules(await fetchPrizeRules(token, seasonId))
+    setRules(await fetchPrizeRules(seasonId))
   }
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function PrizeRulesPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await createPrizeRule(token, {
+      await createPrizeRule({
         season_id: seasonId,
         label: form.label,
         scope: form.scope,

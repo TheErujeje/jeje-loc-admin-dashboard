@@ -25,7 +25,7 @@ export default function ConfigurationPage() {
 
   const load = () => {
     if (!token) return
-    fetchSeasons(token)
+    fetchSeasons()
       .then((data) => {
         setSeasons(data)
         setEndsAtDraft(Object.fromEntries(data.map((s) => [s.id, toDatetimeLocal(s.season_ends_at)])))
@@ -43,7 +43,7 @@ export default function ConfigurationPage() {
     try {
       const draft = endsAtDraft[seasonId]
       const iso = draft ? new Date(draft).toISOString() : null
-      await updateSeasonEndsAt(token, seasonId, iso)
+      await updateSeasonEndsAt(seasonId, iso)
       setSavedId(seasonId)
       load()
     } catch (err) {

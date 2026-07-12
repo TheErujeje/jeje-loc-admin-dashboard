@@ -30,22 +30,72 @@ export interface Payout {
 }
 
 async function handle<T>(res: Response): Promise<T> {
-  if (res.status === 401) {
-    // Access token expired (30 min TTL) or invalid — every admin page shares this
-    // fetch path, so handling it once here means a stale session always sends the
-    // user back to /login instead of pages getting stuck silently mid-fetch.
-    localStorage.removeItem('loc_admin_access_token')
-    localStorage.removeItem('loc_admin_refresh_token')
-    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-      window.location.href = '/login'
-    }
-    throw new Error('Session expired — please log in again')
-  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.detail || `Request failed (${res.status})`)
   }
   return res.json()
+}
+
+function clearSessionAndRedirect() {
+  localStorage.removeItem('loc_admin_access_token')
+  localStorage.removeItem('loc_admin_refresh_token')
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.href = '/login'
+  }
+}
+
+let refreshInFlight: Promise<string | null> | null = null
+
+// Access tokens expire in 30 min. Rather than send the user back to /login on
+// every 401, try exchanging the (30-day) refresh token for a new pair first —
+// only fall back to a hard redirect if the refresh token is also gone/expired.
+// refreshInFlight collapses concurrent 401s (several requests can fail at
+// once) into a single refresh call instead of racing multiple rotations.
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
+
+  refreshInFlight = (async () => {
+    const refreshToken = localStorage.getItem('loc_admin_refresh_token')
+    if (!refreshToken) return null
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      localStorage.setItem('loc_admin_access_token', data.access_token)
+      localStorage.setItem('loc_admin_refresh_token', data.refresh_token)
+      return data.access_token as string
+    } catch {
+      return null
+    }
+  })()
+
+  const result = await refreshInFlight
+  refreshInFlight = null
+  return result
+}
+
+async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const token = localStorage.getItem('loc_admin_access_token')
+  const withAuth = (t: string | null): RequestInit => ({
+    ...init,
+    headers: { ...init.headers, ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+  })
+
+  const res = await fetch(`${API_BASE_URL}${path}`, withAuth(token))
+  if (res.status !== 401) return res
+
+  const newToken = await refreshAccessToken()
+  if (!newToken) {
+    clearSessionAndRedirect()
+    return res
+  }
+  return fetch(`${API_BASE_URL}${path}`, withAuth(newToken))
 }
 
 export async function adminLogin(email: string, password: string) {
@@ -57,10 +107,18 @@ export async function adminLogin(email: string, password: string) {
   return handle<{ access_token: string; refresh_token: string }>(res)
 }
 
-export async function fetchUsers(token: string) {
-  const res = await fetch(`${API_BASE_URL}/admin/users`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+export async function adminLogout() {
+  const refreshToken = localStorage.getItem('loc_admin_refresh_token')
+  if (!refreshToken) return
+  await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  }).catch(() => {})
+}
+
+export async function fetchUsers() {
+  const res = await authedFetch('/admin/users')
   return handle<User[]>(res)
 }
 
@@ -76,26 +134,22 @@ export interface SeasonUser {
   joined_at: string | null
 }
 
-export async function fetchSeasonUsers(token: string, seasonId: string) {
-  const res = await fetch(`${API_BASE_URL}/admin/seasons/${seasonId}/users`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+export async function fetchSeasonUsers(seasonId: string) {
+  const res = await authedFetch(`/admin/seasons/${seasonId}/users`)
   return handle<SeasonUser[]>(res)
 }
 
-export async function fetchPayouts(token: string, seasonId?: string, status?: string) {
-  const url = new URL(`${API_BASE_URL}/payouts`)
-  if (status) url.searchParams.set('status_filter', status)
-  if (seasonId) url.searchParams.set('season_id', seasonId)
-  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+export async function fetchPayouts(seasonId?: string, status?: string) {
+  const params = new URLSearchParams()
+  if (status) params.set('status_filter', status)
+  if (seasonId) params.set('season_id', seasonId)
+  const qs = params.toString()
+  const res = await authedFetch(`/payouts${qs ? `?${qs}` : ''}`)
   return handle<Payout[]>(res)
 }
 
-export async function triggerSyncAndCalculate(token: string, seasonId: string) {
-  const res = await fetch(`${API_BASE_URL}/payouts/sync-and-calculate/${seasonId}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
+export async function triggerSyncAndCalculate(seasonId: string) {
+  const res = await authedFetch(`/payouts/sync-and-calculate/${seasonId}`, { method: 'POST' })
   return handle<{ newly_final_gameweeks: number[]; payouts_created: number }>(res)
 }
 
@@ -115,27 +169,22 @@ export interface PrizeRule {
   is_active: boolean
 }
 
-export async function fetchPrizeRules(token: string, seasonId: string) {
-  const res = await fetch(`${API_BASE_URL}/admin/prize-rules?season_id=${seasonId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+export async function fetchPrizeRules(seasonId: string) {
+  const res = await authedFetch(`/admin/prize-rules?season_id=${seasonId}`)
   return handle<PrizeRule[]>(res)
 }
 
-export async function createPrizeRule(
-  token: string,
-  body: {
-    season_id: string
-    label: string
-    scope: string
-    competition_type: string
-    rank_target: number
-    amount_kobo: number
-  }
-) {
-  const res = await fetch(`${API_BASE_URL}/admin/prize-rules`, {
+export async function createPrizeRule(body: {
+  season_id: string
+  label: string
+  scope: string
+  competition_type: string
+  rank_target: number
+  amount_kobo: number
+}) {
+  const res = await authedFetch('/admin/prize-rules', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   return handle<PrizeRule>(res)
@@ -158,17 +207,15 @@ export interface Season {
   created_at: string
 }
 
-export async function fetchSeasons(token: string) {
-  const res = await fetch(`${API_BASE_URL}/admin/seasons`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+export async function fetchSeasons() {
+  const res = await authedFetch('/admin/seasons')
   return handle<Season[]>(res)
 }
 
-export async function updateSeasonEndsAt(token: string, seasonId: string, seasonEndsAt: string | null) {
-  const res = await fetch(`${API_BASE_URL}/admin/seasons/${seasonId}`, {
+export async function updateSeasonEndsAt(seasonId: string, seasonEndsAt: string | null) {
+  const res = await authedFetch(`/admin/seasons/${seasonId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ season_ends_at: seasonEndsAt }),
   })
   return handle<Season>(res)
@@ -184,10 +231,11 @@ export interface StandingRow {
   overall_rank: number | null
 }
 
-export async function fetchStandings(token: string, seasonId: string, eventId?: number) {
-  const url = new URL(`${API_BASE_URL}/fpl/seasons/${seasonId}/standings`)
-  if (eventId) url.searchParams.set('event_id', String(eventId))
-  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+export async function fetchStandings(seasonId: string, eventId?: number) {
+  const params = new URLSearchParams()
+  if (eventId) params.set('event_id', String(eventId))
+  const qs = params.toString()
+  const res = await authedFetch(`/fpl/seasons/${seasonId}/standings${qs ? `?${qs}` : ''}`)
   return handle<{ event_id: number | null; results: StandingRow[] }>(res)
 }
 

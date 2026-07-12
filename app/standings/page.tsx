@@ -19,7 +19,7 @@ export default function StandingsPage() {
     if (!token || !seasonId) return
     setLoading(true)
     setError(null)
-    fetchStandings(token, seasonId)
+    fetchStandings(seasonId)
       .then((data) => {
         setStandings(data.results)
         setEventId(data.event_id)

@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { adminLogin, type AdminUser } from './api'
+import { adminLogin, adminLogout, type AdminUser } from './api'
 
 interface AuthContextValue {
   token: string | null
@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
+    adminLogout() // revoke server-side; fire-and-forget, local logout doesn't wait on it
     localStorage.removeItem('loc_admin_access_token')
     localStorage.removeItem('loc_admin_refresh_token')
     setToken(null)
