@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, RefreshCw, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, RefreshCw, Clock, CheckCircle2, XCircle, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason } from '@/lib/season'
-import { fetchPayouts, triggerSyncAndCalculate, type Payout } from '@/lib/api'
+import { fetchPayouts, triggerSyncAndCalculate, approvePayoutDirect, type Payout } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 
 const PENDING_STATUSES = ['calculated', 'pending_approval', 'approved', 'processing']
@@ -19,7 +19,17 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'text-gray-500',
 }
 
-function PayoutRow({ p, showFailure }: { p: Payout; showFailure?: boolean }) {
+function PayoutRow({
+  p,
+  showFailure,
+  onApprove,
+  approvingId,
+}: {
+  p: Payout
+  showFailure?: boolean
+  onApprove?: (p: Payout) => void
+  approvingId?: string | null
+}) {
   return (
     <tr className="border-t border-stadium-800">
       <td className="px-4 py-3">{p.event_id ? `GW${p.event_id}` : 'Season'}</td>
@@ -32,11 +42,40 @@ function PayoutRow({ p, showFailure }: { p: Payout; showFailure?: boolean }) {
       <td className={`px-4 py-3 font-bold ${STATUS_COLORS[p.status] || ''}`}>{p.status.replace('_', ' ')}</td>
       {showFailure && <td className="px-4 py-3 text-red-400 text-xs max-w-xs truncate">{p.failure_reason || '—'}</td>}
       <td className="px-4 py-3 text-gray-500">{new Date(p.calculated_at).toLocaleDateString()}</td>
+      {onApprove && (
+        <td className="px-4 py-3">
+          {p.status === 'pending_approval' && (
+            <button
+              onClick={() => onApprove(p)}
+              disabled={approvingId === p.id}
+              className="flex items-center gap-1.5 bg-pitch-green text-stadium-900 font-heading font-bold text-xs px-3 py-1.5 rounded-sm disabled:opacity-50"
+            >
+              {approvingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+              Approve
+            </button>
+          )}
+        </td>
+      )}
     </tr>
   )
 }
 
-function PayoutTable({ payouts, showFailure, emptyLabel }: { payouts: Payout[]; showFailure?: boolean; emptyLabel: string }) {
+function PayoutTable({
+  payouts,
+  showFailure,
+  showAction,
+  emptyLabel,
+  onApprove,
+  approvingId,
+}: {
+  payouts: Payout[]
+  showFailure?: boolean
+  showAction?: boolean
+  emptyLabel: string
+  onApprove?: (p: Payout) => void
+  approvingId?: string | null
+}) {
+  const colCount = 6 + (showFailure ? 1 : 0) + (showAction ? 1 : 0)
   return (
     <div className="overflow-x-auto rounded-sm border border-stadium-700">
       <table className="w-full text-sm">
@@ -49,15 +88,16 @@ function PayoutTable({ payouts, showFailure, emptyLabel }: { payouts: Payout[]; 
             <th className="px-4 py-3">Status</th>
             {showFailure && <th className="px-4 py-3">Reason</th>}
             <th className="px-4 py-3">Calculated</th>
+            {showAction && <th className="px-4 py-3">Action</th>}
           </tr>
         </thead>
         <tbody>
           {payouts.map((p) => (
-            <PayoutRow key={p.id} p={p} showFailure={showFailure} />
+            <PayoutRow key={p.id} p={p} showFailure={showFailure} onApprove={showAction ? onApprove : undefined} approvingId={approvingId} />
           ))}
           {payouts.length === 0 && (
             <tr>
-              <td colSpan={showFailure ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
+              <td colSpan={colCount} className="px-4 py-8 text-center text-gray-500">
                 {emptyLabel}
               </td>
             </tr>
@@ -74,6 +114,8 @@ export default function PayoutsPage() {
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [confirmTarget, setConfirmTarget] = useState<Payout | null>(null)
 
   const load = () => {
     if (!token || !seasonId) return
@@ -103,6 +145,24 @@ export default function PayoutsPage() {
     }
   }
 
+  const confirmApprove = async () => {
+    const p = confirmTarget
+    if (!p) return
+    const label = p.event_id ? `GW${p.event_id}` : 'Season'
+    setConfirmTarget(null)
+    setApprovingId(p.id)
+    setMessage(null)
+    try {
+      const result = await approvePayoutDirect(p.id)
+      setMessage(`${label} — ${p.full_name || p.user_id}: ${result.message}`)
+      load()
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Approval failed')
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
   const pending = payouts.filter((p) => PENDING_STATUSES.includes(p.status))
   const completed = payouts.filter((p) => p.status === 'paid')
   const failed = payouts.filter((p) => p.status === 'failed' || p.status === 'cancelled')
@@ -125,15 +185,21 @@ export default function PayoutsPage() {
 
       <p className="text-sm text-gray-500">
         This normally runs automatically every 15 minutes via the backend scheduler — this button
-        is for manually forcing a check on the season selected above. Approvals happen via the
-        emailed link, not from here.
+        is for manually forcing a check on the season selected above. Approve a pending payout
+        below, or via the emailed link — either way fires the same Paystack transfer.
       </p>
 
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 font-heading text-sm tracking-widest text-floodlight-gold">
           <Clock className="h-4 w-4" /> PENDING ({pending.length})
         </h2>
-        <PayoutTable payouts={pending} emptyLabel="No pending payouts for this season." />
+        <PayoutTable
+          payouts={pending}
+          showAction
+          onApprove={setConfirmTarget}
+          approvingId={approvingId}
+          emptyLabel="No pending payouts for this season."
+        />
       </section>
 
       <section className="space-y-3">
@@ -149,6 +215,41 @@ export default function PayoutsPage() {
         </h2>
         <PayoutTable payouts={failed} showFailure emptyLabel="No failed payouts for this season." />
       </section>
+
+      {confirmTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-stadium-800 border border-stadium-700 rounded-sm p-6 max-w-md w-full space-y-4">
+            <div className="flex items-center gap-3 text-floodlight-gold">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <h3 className="font-heading font-bold text-lg">Approve this payout?</h3>
+            </div>
+            <div className="text-sm text-gray-300 space-y-1 bg-stadium-900 border border-stadium-700 rounded-sm p-4">
+              <p>
+                {confirmTarget.event_id ? `GW${confirmTarget.event_id}` : 'Season'} —{' '}
+                {confirmTarget.prize_rule_label || 'Prize'}
+              </p>
+              <p>{confirmTarget.full_name || confirmTarget.user_id}</p>
+              <p className="font-bold text-white">₦{(confirmTarget.amount_kobo / 100).toLocaleString()}</p>
+            </div>
+            <p className="text-gray-500 text-xs">This fires the Paystack transfer immediately and can&apos;t be undone from here.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmTarget(null)}
+                className="px-4 py-2 rounded-sm text-sm font-heading tracking-wide text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmApprove}
+                className="flex items-center gap-2 bg-pitch-green text-stadium-900 font-heading font-bold px-4 py-2 rounded-sm text-sm"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Approve &amp; Pay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }

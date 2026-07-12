@@ -247,3 +247,8 @@ export async function approvePayoutByToken(token: string) {
   const res = await fetch(`${API_BASE_URL}/payouts/approve?token=${encodeURIComponent(token)}`)
   return handle<{ payout_id: string; status: string; message: string }>(res)
 }
+
+export async function approvePayoutDirect(payoutId: string) {
+  const res = await authedFetch(`/payouts/${payoutId}/approve`, { method: 'POST' })
+  return handle<{ payout_id: string; status: string; message: string }>(res)
+}
