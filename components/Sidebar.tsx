@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Wallet, Users, Trophy, Settings, ShieldCheck, LogOut } from 'lucide-react'
+import { Wallet, Users, Trophy, Settings, ShieldCheck, LogOut, ListOrdered } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 
 const links = [
+  { name: 'Standings', path: '/standings', icon: ListOrdered },
   { name: 'Payouts', path: '/payouts', icon: Wallet },
   { name: 'Users', path: '/users', icon: Users },
   { name: 'Prize Rules', path: '/prize-rules', icon: Trophy },

@@ -162,6 +162,23 @@ export async function updateSeasonEndsAt(token: string, seasonId: string, season
   return handle<Season>(res)
 }
 
+export interface StandingRow {
+  user_id: number
+  fpl_team_name: string
+  full_name: string
+  gw_points: number
+  gw_rank: number | null
+  total_points: number
+  overall_rank: number | null
+}
+
+export async function fetchStandings(token: string, seasonId: string, eventId?: number) {
+  const url = new URL(`${API_BASE_URL}/fpl/seasons/${seasonId}/standings`)
+  if (eventId) url.searchParams.set('event_id', String(eventId))
+  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+  return handle<{ event_id: number | null; results: StandingRow[] }>(res)
+}
+
 export async function approvePayoutByToken(token: string) {
   const res = await fetch(`${API_BASE_URL}/payouts/approve?token=${encodeURIComponent(token)}`)
   return handle<{ payout_id: string; status: string; message: string }>(res)
