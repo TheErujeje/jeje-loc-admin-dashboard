@@ -57,83 +57,83 @@ export default function ConfigurationPage() {
 
   return (
     <AdminLayout>
-      <h1 className="text-2xl font-heading font-bold">Configuration</h1>
+      <h1 className="text-2xl font-semibold text-ink-900 tracking-tight">Configuration</h1>
 
       {activeSeason ? (
-        <div className="bg-stadium-800 border border-pitch-green/40 rounded-sm p-6">
-          <p className="font-heading text-xs tracking-widest text-pitch-green mb-2">ACTIVE SEASON</p>
-          <p className="text-3xl font-heading font-bold">{activeSeason.label}</p>
-          <p className="text-gray-400 text-sm mt-1">
+        <div className="bg-white border border-hairline rounded-card shadow-sm p-6">
+          <p className="label-eyebrow text-brand-purple mb-2">Active season</p>
+          <p className="text-3xl font-semibold text-ink-900 tracking-tight">{activeSeason.label}</p>
+          <p className="text-ink-500 text-sm mt-1">
             {activeSeason.status === 'registration_open' ? 'Registration open' : 'In progress'} &middot;{' '}
             {activeSeason.fpl_league_name || 'League name not set'}
           </p>
         </div>
       ) : (
-        <div className="bg-stadium-800 border border-stadium-700 rounded-sm p-6 text-gray-400 text-sm">
+        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 text-ink-500 text-sm">
           No active or registration-open season right now.
         </div>
       )}
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+      {error && <p className="text-status-danger text-sm">{error}</p>}
 
       <div className="space-y-4">
         {seasons.map((season) => (
-          <div key={season.id} className="bg-stadium-800 border border-stadium-700 rounded-sm p-6 space-y-4">
+          <div key={season.id} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h2 className="font-heading text-xl font-bold">{season.label}</h2>
+                <h2 className="text-xl font-semibold text-ink-900 tracking-tight">{season.label}</h2>
                 <span
-                  className={`text-xs font-heading tracking-wide ${
-                    ACTIVE_STATUSES.includes(season.status) ? 'text-pitch-green' : 'text-gray-500'
+                  className={`text-xs font-medium ${
+                    ACTIVE_STATUSES.includes(season.status) ? 'text-status-success' : 'text-ink-500'
                   }`}
                 >
-                  {season.status.replace('_', ' ').toUpperCase()}
+                  {season.status.replace('_', ' ')}
                 </span>
               </div>
-              <p className="text-gray-400 text-sm">Entry fee: ₦{(season.entry_fee_kobo / 100).toLocaleString()}</p>
+              <p className="text-ink-500 text-sm">Entry fee: ₦{(season.entry_fee_kobo / 100).toLocaleString()}</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">FPL League</p>
-                <p className="text-gray-300">{season.fpl_league_name || '—'}</p>
+                <p className="label-eyebrow mb-1">FPL League</p>
+                <p className="text-ink-700">{season.fpl_league_name || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Join Code</p>
-                <p className="text-gray-300 font-mono">{season.fpl_league_join_code || '—'}</p>
+                <p className="label-eyebrow mb-1">Join Code</p>
+                <p className="text-ink-700 font-mono">{season.fpl_league_join_code || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Gameweeks</p>
-                <p className="text-gray-300">
+                <p className="label-eyebrow mb-1">Gameweeks</p>
+                <p className="text-ink-700">
                   {season.fpl_start_event ?? '—'} – {season.fpl_end_event ?? '—'}
                 </p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Created</p>
-                <p className="text-gray-300">{new Date(season.created_at).toLocaleDateString()}</p>
+                <p className="label-eyebrow mb-1">Created</p>
+                <p className="text-ink-700">{new Date(season.created_at).toLocaleDateString()}</p>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-stadium-700">
-              <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">
-                Season Close Date — when this season ends and the app switches to the next one
+            <div className="pt-4 border-t border-hairline">
+              <label className="label-eyebrow block mb-2">
+                Season close date — when this season ends and the app switches to the next one
               </label>
               <div className="flex items-center gap-3 flex-wrap">
                 <input
                   type="datetime-local"
                   value={endsAtDraft[season.id] || ''}
                   onChange={(e) => setEndsAtDraft({ ...endsAtDraft, [season.id]: e.target.value })}
-                  className="bg-stadium-900 border border-stadium-700 rounded-sm px-4 py-2 text-sm"
+                  className="bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
                 />
                 <button
                   onClick={() => handleSave(season.id)}
                   disabled={savingId === season.id}
-                  className="flex items-center gap-2 bg-stadium-900 border border-stadium-700 hover:border-pitch-green px-4 py-2 rounded-sm text-sm font-heading tracking-wide disabled:opacity-50"
+                  className="flex items-center gap-2 bg-white border border-hairline hover:border-brand-purple px-4 py-2 rounded-lg text-sm text-ink-700 disabled:opacity-50"
                 >
                   {savingId === season.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : savedId === season.id ? (
-                    <CheckCircle2 className="h-4 w-4 text-pitch-green" />
+                    <CheckCircle2 className="h-4 w-4 text-status-success" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
@@ -144,7 +144,7 @@ export default function ConfigurationPage() {
           </div>
         ))}
 
-        {seasons.length === 0 && <p className="text-gray-500 text-sm">No seasons found.</p>}
+        {seasons.length === 0 && <p className="text-ink-500 text-sm">No seasons found.</p>}
       </div>
     </AdminLayout>
   )

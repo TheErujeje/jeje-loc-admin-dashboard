@@ -5,16 +5,73 @@
 @layer base {
   :root {
     --font-inter: 'Inter', sans-serif;
-    --font-oswald: 'Oswald', sans-serif;
   }
 
   body {
-    @apply bg-stadium-900 text-white antialiased;
+    @apply bg-white text-ink-900 antialiased;
     font-family: var(--font-inter);
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply uppercase tracking-wide;
-    font-family: var(--font-oswald);
+    @apply tracking-tight;
+    font-family: var(--font-inter);
   }
+}
+
+@layer utilities {
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .label-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: theme('colors.ink.500');
+    font-weight: 500;
+  }
+
+  .card-lift {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-lift:hover {
+    border-color: theme('colors.ink.300');
+  }
+}
+
+/* Split-screen auth shell — dark brand panel (left) + white form panel (right) */
+.auth-brand {
+  background:
+    radial-gradient(130% 100% at 100% 0%, rgba(212, 153, 185, 0.35), transparent 58%),
+    linear-gradient(158deg, #1a0020 0%, #2b0030 42%, #38003c 100%);
+}
+.auth-strip {
+  background: linear-gradient(120deg, #1a0020, #38003c);
+}
+.auth-brand-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(46% 42% at 84% 6%, rgba(212, 153, 185, 0.55), transparent 62%),
+    radial-gradient(40% 44% at 6% 96%, rgba(120, 140, 255, 0.2), transparent 60%),
+    radial-gradient(90% 70% at 50% 120%, rgba(0, 0, 0, 0.35), transparent 60%);
+}
+.auth-strip-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 120% at 90% 0%, rgba(255, 255, 255, 0.16), transparent 60%);
+}
+.auth-brand-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 38px 38px;
+  -webkit-mask-image: radial-gradient(130% 105% at 100% 0%, black, transparent 72%);
+  mask-image: radial-gradient(130% 105% at 100% 0%, black, transparent 72%);
 }

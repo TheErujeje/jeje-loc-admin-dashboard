@@ -8,10 +8,9 @@ export interface AdminUser {
 }
 
 export interface User {
-  fpl_entry_id: number
+  id: string
   email: string
   full_name: string
-  fpl_team_name: string
   status: string
   created_at: string
 }
@@ -22,7 +21,7 @@ export interface Payout {
   prize_rule_id: string
   prize_rule_label: string | null
   event_id: number | null
-  user_id: number
+  user_id: string
   full_name: string | null
   fpl_team_name: string | null
   amount_kobo: number
@@ -127,6 +126,7 @@ export async function fetchUsers() {
 }
 
 export interface SeasonUser {
+  user_id: string
   fpl_entry_id: number
   email: string
   full_name: string
@@ -141,6 +141,11 @@ export interface SeasonUser {
 export async function fetchSeasonUsers(seasonId: string) {
   const res = await authedFetch(`/admin/seasons/${seasonId}/users`)
   return handle<SeasonUser[]>(res)
+}
+
+export async function resetUserPassword(userId: string) {
+  const res = await authedFetch(`/admin/users/${userId}/reset-password`, { method: 'POST' })
+  return handle<{ temporary_password: string }>(res)
 }
 
 export async function fetchPayouts(seasonId?: string, status?: string) {
@@ -245,9 +250,9 @@ export async function updateSeasonEndsAt(seasonId: string, seasonEndsAt: string 
 }
 
 export interface StandingRow {
-  user_id: number
-  fpl_team_name: string
-  full_name: string
+  user_id: string | null
+  fpl_team_name: string | null
+  full_name: string | null
   gw_points: number
   gw_rank: number | null
   total_points: number
@@ -262,12 +267,82 @@ export async function fetchStandings(seasonId: string, eventId?: number) {
   return handle<{ event_id: number | null; results: StandingRow[] }>(res)
 }
 
+export interface NewEntryRow {
+  fpl_entry_id: number
+  entry_name: string
+  player_first_name: string | null
+  player_last_name: string | null
+  joined_time: string
+}
+
+export async function fetchNewEntries(seasonId: string) {
+  const res = await authedFetch(`/fpl/seasons/${seasonId}/new-entries`)
+  return handle<NewEntryRow[]>(res)
+}
+
+export async function previewPayoutApproval(token: string) {
+  const res = await fetch(`${API_BASE_URL}/payouts/approve/preview?token=${encodeURIComponent(token)}`)
+  return handle<{ payout_id: string; recipient_name: string | null; label: string | null; amount_kobo: number; event_id: number | null }>(res)
+}
+
 export async function approvePayoutByToken(token: string) {
-  const res = await fetch(`${API_BASE_URL}/payouts/approve?token=${encodeURIComponent(token)}`)
+  const res = await fetch(`${API_BASE_URL}/payouts/approve?token=${encodeURIComponent(token)}`, { method: 'POST' })
   return handle<{ payout_id: string; status: string; message: string }>(res)
 }
 
 export async function approvePayoutDirect(payoutId: string) {
   const res = await authedFetch(`/payouts/${payoutId}/approve`, { method: 'POST' })
   return handle<{ payout_id: string; status: string; message: string }>(res)
+}
+
+export async function retryPayout(payoutId: string) {
+  const res = await authedFetch(`/payouts/${payoutId}/retry`, { method: 'POST' })
+  return handle<{ payout_id: string; status: string; message: string }>(res)
+}
+
+export async function settlePayoutManually(payoutId: string) {
+  const res = await authedFetch(`/payouts/${payoutId}/settle-manual`, { method: 'POST' })
+  return handle<{ payout_id: string; status: string; message: string }>(res)
+}
+
+export type ChallengeType = 'most_points' | 'most_goals' | 'most_bonus' | 'most_cards'
+
+export interface Challenge {
+  id: string
+  season_id: string
+  event_id: number
+  challenge_type: ChallengeType
+  stake_kobo: number
+  creator_league_entry_id: string
+  creator_team_name: string | null
+  opponent_league_entry_id: string | null
+  opponent_team_name: string | null
+  status: string
+  winner_league_entry_id: string | null
+  result_snapshot: {
+    creator_value?: number
+    opponent_value?: number
+    proposed_winner_league_entry_id?: string | null
+  } | null
+  payout_percent_snapshot: number
+  created_at: string
+  accepted_at: string | null
+  resolved_at: string | null
+}
+
+export async function fetchArbitrationQueue() {
+  const res = await authedFetch('/admin/challenges')
+  return handle<Challenge[]>(res)
+}
+
+export async function resolveChallenge(
+  challengeId: string,
+  body: { action: 'declare_winner'; winner_league_entry_id: string } | { action: 'refund_both' }
+) {
+  const res = await authedFetch(`/admin/challenges/${challengeId}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return handle<Challenge>(res)
 }
