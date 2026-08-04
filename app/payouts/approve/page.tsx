@@ -1,12 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { approvePayoutByToken, previewPayoutApproval } from '@/lib/api'
 
 function formatNaira(kobo: number) {
   return `₦${(kobo / 100).toLocaleString()}`
+}
+
+function LoadingState() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center bg-white dark:bg-ink-900">
+      <Loader2 className="h-12 w-12 text-brand-purple animate-spin mb-4" />
+      <p className="text-ink-500">Loading payout details…</p>
+    </div>
+  )
 }
 
 /**
@@ -17,7 +26,7 @@ function formatNaira(kobo: number) {
  * security scanner prefetching the link can't burn the token. The transfer
  * only fires once the admin explicitly clicks "Confirm & Approve".
  */
-export default function ApprovePayoutPage() {
+function ApprovePayoutContent() {
   const params = useSearchParams()
   const token = params.get('token')
 
@@ -105,5 +114,13 @@ export default function ApprovePayoutPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ApprovePayoutPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ApprovePayoutContent />
+    </Suspense>
   )
 }
