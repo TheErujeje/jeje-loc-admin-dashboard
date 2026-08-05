@@ -18,7 +18,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<SeasonUser[]>([])
   const [error, setError] = useState<string | null>(null)
   const [resettingUserId, setResettingUserId] = useState<string | null>(null)
-  const [tempPassword, setTempPassword] = useState<{ userId: string; password: string } | null>(null)
+  const [resetConfirmation, setResetConfirmation] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token || !seasonId) return
@@ -28,14 +28,14 @@ export default function UsersPage() {
   }, [token, seasonId])
 
   const handleResetPassword = async (userId: string) => {
-    if (!confirm('Issue a new temporary password for this user? Their old password stops working immediately.')) {
+    if (!confirm('Issue a new temporary password for this user? Their old password stops working immediately, and the new one is emailed to them.')) {
       return
     }
     setResettingUserId(userId)
-    setTempPassword(null)
+    setResetConfirmation(null)
     try {
       const result = await resetUserPassword(userId)
-      setTempPassword({ userId, password: result.temporary_password })
+      setResetConfirmation(result.emailed_to)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reset password')
     } finally {
@@ -55,12 +55,11 @@ export default function UsersPage() {
 
       {error && <p className="text-status-danger text-sm">{error}</p>}
 
-      {tempPassword && (
-        <div className="bg-status-warning/10 border border-status-warning/30 rounded-card p-4 text-sm">
-          <p className="font-semibold text-status-warning">Temporary password issued</p>
+      {resetConfirmation && (
+        <div className="bg-status-success/10 border border-status-success/30 rounded-card p-4 text-sm">
+          <p className="font-semibold text-status-success">Password reset</p>
           <p className="text-ink-700 mt-1">
-            Relay this to the user directly — it won&apos;t be shown again:{' '}
-            <span className="font-mono text-ink-900">{tempPassword.password}</span>
+            A new temporary password has been emailed to <span className="font-medium text-ink-900">{resetConfirmation}</span>.
           </p>
         </div>
       )}

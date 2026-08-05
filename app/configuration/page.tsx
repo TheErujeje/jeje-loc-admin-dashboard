@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2, Save, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { fetchSeasons, updateSeasonEndsAt, type Season } from '@/lib/api'
+import { fetchSeasons, updateSeason, fetchAdminPrizePool, type Season, type PrizePoolConfig, type PrizePoolBreakdown } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 
 const ACTIVE_STATUSES = ['active', 'registration_open']
@@ -15,10 +15,39 @@ function toDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+type Draft = {
+  endsAt: string
+  entryFeeNaira: number
+  weeklyLimit: number
+  prizePool: PrizePoolConfig
+}
+
+function toDraft(s: Season): Draft {
+  return {
+    endsAt: toDatetimeLocal(s.season_ends_at),
+    entryFeeNaira: s.entry_fee_kobo / 100,
+    weeklyLimit: s.challenge_weekly_limit,
+    prizePool: {
+      minimum_players: s.prize_pool_config.minimum_players,
+      weekly_prize: { ...s.prize_pool_config.weekly_prize, amount_kobo: s.prize_pool_config.weekly_prize.amount_kobo / 100 },
+      season_prizes: { ...s.prize_pool_config.season_prizes },
+    },
+  }
+}
+
+const PRIZE_PERCENT_FIELDS: { key: keyof PrizePoolConfig['season_prizes']; label: string }[] = [
+  { key: 'winner_percent', label: 'Winner (1st)' },
+  { key: 'runner_up_percent', label: 'Runner-up (2nd)' },
+  { key: 'third_place_percent', label: '3rd place' },
+  { key: 'fourth_to_tenth_percent', label: '4th – 10th (split evenly)' },
+  { key: 'eleventh_to_fifteenth_percent', label: '11th – 15th (split evenly)' },
+]
+
 export default function ConfigurationPage() {
   const { token } = useAuth()
   const [seasons, setSeasons] = useState<Season[]>([])
-  const [endsAtDraft, setEndsAtDraft] = useState<Record<string, string>>({})
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({})
+  const [breakdowns, setBreakdowns] = useState<Record<string, PrizePoolBreakdown>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -28,22 +57,51 @@ export default function ConfigurationPage() {
     fetchSeasons()
       .then((data) => {
         setSeasons(data)
-        setEndsAtDraft(Object.fromEntries(data.map((s) => [s.id, toDatetimeLocal(s.season_ends_at)])))
+        setDrafts(Object.fromEntries(data.map((s) => [s.id, toDraft(s)])))
+        Promise.all(data.map((s) => fetchAdminPrizePool(s.id).then((b) => [s.id, b] as const)))
+          .then((pairs) => setBreakdowns(Object.fromEntries(pairs)))
+          .catch(() => {})
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
   }
 
   useEffect(load, [token])
 
+  const setDraft = (seasonId: string, patch: Partial<Draft>) => {
+    setDrafts((prev) => ({ ...prev, [seasonId]: { ...prev[seasonId], ...patch } }))
+  }
+
+  const setPrizePercent = (seasonId: string, key: keyof PrizePoolConfig['season_prizes'], value: number) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [seasonId]: {
+        ...prev[seasonId],
+        prizePool: { ...prev[seasonId].prizePool, season_prizes: { ...prev[seasonId].prizePool.season_prizes, [key]: value } },
+      },
+    }))
+  }
+
   const handleSave = async (seasonId: string) => {
     if (!token) return
+    const draft = drafts[seasonId]
+    if (!draft) return
     setSavingId(seasonId)
     setSavedId(null)
     setError(null)
     try {
-      const draft = endsAtDraft[seasonId]
-      const iso = draft ? new Date(draft).toISOString() : null
-      await updateSeasonEndsAt(seasonId, iso)
+      await updateSeason(seasonId, {
+        season_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
+        entry_fee_kobo: Math.round(draft.entryFeeNaira * 100),
+        challenge_weekly_limit: draft.weeklyLimit,
+        prize_pool_config: {
+          minimum_players: draft.prizePool.minimum_players,
+          weekly_prize: {
+            enabled: draft.prizePool.weekly_prize.enabled,
+            amount_kobo: Math.round(draft.prizePool.weekly_prize.amount_kobo * 100),
+          },
+          season_prizes: draft.prizePool.season_prizes,
+        },
+      })
       setSavedId(seasonId)
       load()
     } catch (err) {
@@ -77,72 +135,210 @@ export default function ConfigurationPage() {
       {error && <p className="text-status-danger text-sm">{error}</p>}
 
       <div className="space-y-4">
-        {seasons.map((season) => (
-          <div key={season.id} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-ink-900 tracking-tight">{season.label}</h2>
-                <span
-                  className={`text-xs font-medium ${
-                    ACTIVE_STATUSES.includes(season.status) ? 'text-status-success' : 'text-ink-500'
-                  }`}
-                >
-                  {season.status.replace('_', ' ')}
-                </span>
-              </div>
-              <p className="text-ink-500 text-sm">Entry fee: ₦{(season.entry_fee_kobo / 100).toLocaleString()}</p>
-            </div>
+        {seasons.map((season) => {
+          const draft = drafts[season.id]
+          if (!draft) return null
+          const percentTotal = PRIZE_PERCENT_FIELDS.reduce((sum, f) => sum + (draft.prizePool.season_prizes[f.key] || 0), 0)
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="label-eyebrow mb-1">FPL League</p>
-                <p className="text-ink-700">{season.fpl_league_name || '—'}</p>
+          return (
+            <div key={season.id} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-ink-900 tracking-tight">{season.label}</h2>
+                  <span
+                    className={`text-xs font-medium ${
+                      ACTIVE_STATUSES.includes(season.status) ? 'text-status-success' : 'text-ink-500'
+                    }`}
+                  >
+                    {season.status.replace('_', ' ')}
+                  </span>
+                </div>
               </div>
-              <div>
-                <p className="label-eyebrow mb-1">Join Code</p>
-                <p className="text-ink-700 font-mono">{season.fpl_league_join_code || '—'}</p>
-              </div>
-              <div>
-                <p className="label-eyebrow mb-1">Gameweeks</p>
-                <p className="text-ink-700">
-                  {season.fpl_start_event ?? '—'} – {season.fpl_end_event ?? '—'}
-                </p>
-              </div>
-              <div>
-                <p className="label-eyebrow mb-1">Created</p>
-                <p className="text-ink-700">{new Date(season.created_at).toLocaleDateString()}</p>
-              </div>
-            </div>
 
-            <div className="pt-4 border-t border-hairline">
-              <label className="label-eyebrow block mb-2">
-                Season close date — when this season ends and the app switches to the next one
-              </label>
-              <div className="flex items-center gap-3 flex-wrap">
-                <input
-                  type="datetime-local"
-                  value={endsAtDraft[season.id] || ''}
-                  onChange={(e) => setEndsAtDraft({ ...endsAtDraft, [season.id]: e.target.value })}
-                  className="bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="label-eyebrow mb-1">FPL League</p>
+                  <p className="text-ink-700">{season.fpl_league_name || '—'}</p>
+                </div>
+                <div>
+                  <p className="label-eyebrow mb-1">Join Code</p>
+                  <p className="text-ink-700 font-mono">{season.fpl_league_join_code || '—'}</p>
+                </div>
+                <div>
+                  <p className="label-eyebrow mb-1">Gameweeks</p>
+                  <p className="text-ink-700">
+                    {season.fpl_start_event ?? '—'} – {season.fpl_end_event ?? '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="label-eyebrow mb-1">Created</p>
+                  <p className="text-ink-700">{new Date(season.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-hairline grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="label-eyebrow block mb-2">Entry fee (₦)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={draft.entryFeeNaira}
+                    onChange={(e) => setDraft(season.id, { entryFeeNaira: Number(e.target.value) })}
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                  />
+                </div>
+                <div>
+                  <label className="label-eyebrow block mb-2">Max challenges / week</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={draft.weeklyLimit}
+                    onChange={(e) => setDraft(season.id, { weeklyLimit: Number(e.target.value) })}
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                  />
+                </div>
+                <div>
+                  <label className="label-eyebrow block mb-2">Season close date</label>
+                  <input
+                    type="datetime-local"
+                    value={draft.endsAt}
+                    onChange={(e) => setDraft(season.id, { endsAt: e.target.value })}
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-hairline space-y-4">
+                <p className="label-eyebrow">Prize pool</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-ink-500 block mb-2">Minimum players for prizes to run</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={draft.prizePool.minimum_players}
+                      onChange={(e) =>
+                        setDraft(season.id, { prizePool: { ...draft.prizePool, minimum_players: Number(e.target.value) } })
+                      }
+                      className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      type="checkbox"
+                      id={`weekly-enabled-${season.id}`}
+                      checked={draft.prizePool.weekly_prize.enabled}
+                      onChange={(e) =>
+                        setDraft(season.id, {
+                          prizePool: { ...draft.prizePool, weekly_prize: { ...draft.prizePool.weekly_prize, enabled: e.target.checked } },
+                        })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor={`weekly-enabled-${season.id}`} className="text-xs text-ink-500">
+                      Weekly gameweek-winner prize enabled
+                    </label>
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink-500 block mb-2">Weekly prize amount (₦)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={draft.prizePool.weekly_prize.amount_kobo}
+                      disabled={!draft.prizePool.weekly_prize.enabled}
+                      onChange={(e) =>
+                        setDraft(season.id, {
+                          prizePool: {
+                            ...draft.prizePool,
+                            weekly_prize: { ...draft.prizePool.weekly_prize, amount_kobo: Number(e.target.value) },
+                          },
+                        })
+                      }
+                      className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-ink-500 mb-2">
+                    Season-end split — percent of the collected registration pool paid to each rank
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    {PRIZE_PERCENT_FIELDS.map((f) => (
+                      <div key={f.key}>
+                        <label className="text-xs text-ink-500 block mb-1">{f.label}</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={draft.prizePool.season_prizes[f.key]}
+                            onChange={(e) => setPrizePercent(season.id, f.key, Number(e.target.value))}
+                            className="w-full bg-white border border-hairline rounded-lg pl-3 pr-7 py-2 text-sm text-ink-900"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`text-xs mt-2 ${percentTotal > 100 ? 'text-status-danger' : 'text-ink-500'}`}>
+                    Total: {percentTotal}%{percentTotal > 100 ? ' — exceeds 100% of the pool' : ''}
+                  </p>
+                </div>
+              </div>
+
+              {breakdowns[season.id] && (
+                <div className="pt-4 border-t border-hairline">
+                  <p className="label-eyebrow mb-3">Current pool (live)</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div className="bg-ink-100 rounded-lg p-3">
+                      <p className="text-xs text-ink-500">Collected</p>
+                      <p className="font-semibold text-ink-900">₦{(breakdowns[season.id].pool_kobo / 100).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-ink-100 rounded-lg p-3">
+                      <p className="text-xs text-ink-500">Paid entries</p>
+                      <p className="font-semibold text-ink-900">
+                        {breakdowns[season.id].paid_entries}
+                        {breakdowns[season.id].minimum_players > 0 && (
+                          <span className="text-xs text-ink-500 font-normal"> / {breakdowns[season.id].minimum_players} min</span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="bg-ink-100 rounded-lg p-3">
+                      <p className="text-xs text-ink-500">Allocated to prizes</p>
+                      <p className="font-semibold text-ink-900">₦{(breakdowns[season.id].allocated_kobo / 100).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-ink-100 rounded-lg p-3">
+                      <p className="text-xs text-ink-500">Platform profit</p>
+                      <p className={`font-semibold ${(breakdowns[season.id].platform_profit_kobo ?? 0) < 0 ? 'text-status-danger' : 'text-ink-900'}`}>
+                        ₦{((breakdowns[season.id].platform_profit_kobo ?? 0) / 100).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-hairline flex items-center gap-3">
                 <button
                   onClick={() => handleSave(season.id)}
                   disabled={savingId === season.id}
-                  className="flex items-center gap-2 bg-white border border-hairline hover:border-brand-purple px-4 py-2 rounded-lg text-sm text-ink-700 disabled:opacity-50"
+                  className="flex items-center gap-2 bg-brand-purple text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50"
                 >
                   {savingId === season.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : savedId === season.id ? (
-                    <CheckCircle2 className="h-4 w-4 text-status-success" />
+                    <CheckCircle2 className="h-4 w-4" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save
+                  Save configuration
                 </button>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {seasons.length === 0 && <p className="text-ink-500 text-sm">No seasons found.</p>}
       </div>

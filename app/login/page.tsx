@@ -130,7 +130,7 @@ export default function LoginPage() {
         </div>
 
         <footer className="px-6 py-4 text-center text-[11.5px] text-ink-400">
-          © {new Date().getFullYear()} Jeje&apos;s League of Champions
+          © {new Date().getFullYear()} Jeje&apos;s <span className="font-semibold">League of Champions</span>
         </footer>
       </main>
     </div>

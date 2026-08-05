@@ -1,10 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Plus, Pencil, Check, X } from 'lucide-react'
+import { Loader2, Plus, Pencil, Check, X, Trophy, Settings, Trash2, Save } from 'lucide-react'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { useSeason } from '@/lib/season'
-import { fetchPrizeRules, createPrizeRule, updatePrizeRule, type PrizeRule } from '@/lib/api'
+import {
+  fetchPrizeRules,
+  createPrizeRule,
+  updatePrizeRule,
+  deletePrizeRule,
+  fetchAdminPrizePool,
+  fetchSeasons,
+  updateSeason,
+  type PrizeRule,
+  type PrizePoolBreakdown,
+  type Season,
+  type PrizePoolConfig,
+} from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 import { Select } from '@/components/ui/Select'
 
@@ -23,15 +36,37 @@ function toEditForm(r: PrizeRule): EditForm {
     scope: r.scope,
     competition_type: r.competition_type,
     rank_target: r.rank_target,
-    amount_naira: r.amount_kobo / 100,
+    amount_naira: (r.amount_kobo ?? 0) / 100,
     is_active: r.is_active,
   }
+}
+
+// Matches the fixed order payout_engine.SEASON_PRIZE_SLOTS returns breakdown
+// rows in — there's no other way to tie a breakdown row back to its config key.
+const SEASON_PRIZE_KEYS: (keyof PrizePoolConfig['season_prizes'])[] = [
+  'winner_percent',
+  'runner_up_percent',
+  'third_place_percent',
+  'fourth_to_tenth_percent',
+  'eleventh_to_fifteenth_percent',
+]
+// How many ranks share each slot's percentage — same order as SEASON_PRIZE_KEYS.
+const SEASON_PRIZE_RANGE_SIZES = [1, 1, 1, 7, 5]
+
+function formatNaira(kobo: number) {
+  return `₦${(kobo / 100).toLocaleString()}`
 }
 
 export default function PrizeRulesPage() {
   const { token } = useAuth()
   const { seasonId } = useSeason()
   const [rules, setRules] = useState<PrizeRule[]>([])
+  const [pool, setPool] = useState<PrizePoolBreakdown | null>(null)
+  const [season, setSeason] = useState<Season | null>(null)
+  const [percentDraft, setPercentDraft] = useState<PrizePoolConfig['season_prizes'] | null>(null)
+  const [editingPercents, setEditingPercents] = useState(false)
+  const [savingPercents, setSavingPercents] = useState(false)
+  const [percentsSaved, setPercentsSaved] = useState(false)
   const [form, setForm] = useState({
     label: '',
     scope: 'gameweek',
@@ -44,10 +79,20 @@ export default function PrizeRulesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = async () => {
     if (!token || !seasonId) return
-    setRules(await fetchPrizeRules(seasonId))
+    const [ruleRows, breakdown, seasons] = await Promise.all([
+      fetchPrizeRules(seasonId),
+      fetchAdminPrizePool(seasonId),
+      fetchSeasons(),
+    ])
+    setRules(ruleRows)
+    setPool(breakdown)
+    const currentSeason = seasons.find((s) => s.id === seasonId) || null
+    setSeason(currentSeason)
+    setPercentDraft(currentSeason ? { ...currentSeason.prize_pool_config.season_prizes } : null)
   }
 
   useEffect(() => {
@@ -77,6 +122,41 @@ export default function PrizeRulesPage() {
     }
   }
 
+  const handleSavePercents = async () => {
+    if (!seasonId || !season || !percentDraft) return
+    setSavingPercents(true)
+    setPercentsSaved(false)
+    setError(null)
+    try {
+      await updateSeason(seasonId, {
+        prize_pool_config: {
+          minimum_players: season.prize_pool_config.minimum_players,
+          weekly_prize: season.prize_pool_config.weekly_prize,
+          season_prizes: percentDraft,
+        },
+      })
+      setPercentsSaved(true)
+      setEditingPercents(false)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save percentages')
+    } finally {
+      setSavingPercents(false)
+    }
+  }
+
+  const startEditPercents = () => {
+    setError(null)
+    setPercentsSaved(false)
+    setPercentDraft(season ? { ...season.prize_pool_config.season_prizes } : null)
+    setEditingPercents(true)
+  }
+
+  const cancelEditPercents = () => {
+    setPercentDraft(season ? { ...season.prize_pool_config.season_prizes } : null)
+    setEditingPercents(false)
+  }
+
   const startEdit = (r: PrizeRule) => {
     setError(null)
     setEditingId(r.id)
@@ -86,6 +166,20 @@ export default function PrizeRulesPage() {
   const cancelEdit = () => {
     setEditingId(null)
     setEditForm(null)
+  }
+
+  const handleDelete = async (r: PrizeRule) => {
+    if (!confirm(`Delete "${r.label}"? This can't be undone.`)) return
+    setError(null)
+    setDeletingId(r.id)
+    try {
+      await deletePrizeRule(r.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete prize')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const saveEdit = async () => {
@@ -112,13 +206,154 @@ export default function PrizeRulesPage() {
 
   return (
     <AdminLayout>
-      <h1 className="text-2xl font-semibold text-ink-900 tracking-tight">Prize Rules</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-semibold text-ink-900 tracking-tight">Prizes</h1>
+        <Link
+          href="/configuration"
+          className="flex items-center gap-1.5 text-sm text-brand-purple hover:underline"
+        >
+          <Settings className="h-4 w-4" />
+          Entry fee, weekly limit &amp; more in Configuration
+        </Link>
+      </div>
+
+      {error && <p className="text-status-danger text-sm">{error}</p>}
+
+      {pool && (
+        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <p className="label-eyebrow text-brand-purple mb-1">Current prize pool</p>
+              <p className="text-3xl font-semibold text-ink-900 tracking-tight tnum">{formatNaira(pool.pool_kobo)}</p>
+            </div>
+            <p className="text-sm text-ink-500">
+              {pool.paid_entries} paid entries
+              {pool.minimum_players > 0 && ` / ${pool.minimum_players} min`}
+            </p>
+          </div>
+
+          {pool.weekly_prize_enabled && (
+            <div className="bg-ink-100 rounded-lg px-4 py-3 text-sm text-ink-700">
+              <span className="font-semibold tnum">{formatNaira(pool.weekly_prize_amount_kobo)}</span> paid to the gameweek
+              winner, every gameweek.
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <p className="label-eyebrow">Season-end split</p>
+              <div className="flex items-center gap-3">
+                {percentsSaved && (
+                  <span className="flex items-center gap-1 text-xs text-status-success">
+                    <Check className="h-3.5 w-3.5" /> Saved
+                  </span>
+                )}
+                {!editingPercents && (
+                  <button
+                    onClick={startEditPercents}
+                    className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              {pool.season_prizes.map((slot, i) => {
+                const key = SEASON_PRIZE_KEYS[i]
+                const percent = editingPercents ? (percentDraft ? percentDraft[key] : slot.percent) : slot.percent
+                const rangeSize = SEASON_PRIZE_RANGE_SIZES[i]
+                const previewPerRank = editingPercents
+                  ? Math.floor((pool.pool_kobo * percent) / 100 / rangeSize)
+                  : slot.per_rank_amount_kobo
+                return (
+                  <div key={slot.label} className="bg-ink-100 rounded-lg p-3 text-center">
+                    <Trophy className="h-4 w-4 mx-auto text-brand-purple mb-1" />
+                    <p className="text-xs text-ink-500 mb-1">{slot.rank_range}</p>
+                    <p className="font-semibold text-sm tnum text-ink-900">{formatNaira(previewPerRank)}</p>
+                    {editingPercents ? (
+                      <div className="relative mt-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={percent}
+                          onChange={(e) => {
+                            setPercentsSaved(false)
+                            setPercentDraft((prev) => (prev ? { ...prev, [key]: Number(e.target.value) } : prev))
+                          }}
+                          className="w-full bg-white border border-hairline rounded-md pl-2 pr-6 py-1 text-xs text-ink-900 text-center"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-400">%</span>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-ink-400 mt-1">{slot.percent}% of pool</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {editingPercents && (
+              <div className="flex items-center justify-between mt-3">
+                <p
+                  className={`text-xs ${
+                    percentDraft && SEASON_PRIZE_KEYS.reduce((sum, k) => sum + (percentDraft[k] || 0), 0) > 100
+                      ? 'text-status-danger'
+                      : 'text-ink-400'
+                  }`}
+                >
+                  Total: {percentDraft ? SEASON_PRIZE_KEYS.reduce((sum, k) => sum + (percentDraft[k] || 0), 0) : 0}% of pool
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={cancelEditPercents}
+                    disabled={savingPercents}
+                    className="flex items-center gap-1.5 bg-white border border-hairline text-ink-500 font-medium text-xs px-3 py-1.5 rounded-md disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSavePercents}
+                    disabled={savingPercents || !percentDraft}
+                    className="flex items-center gap-1.5 bg-brand-purple text-white font-medium text-xs px-3 py-1.5 rounded-md disabled:opacity-50"
+                  >
+                    {savingPercents ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save percentages
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm pt-2 border-t border-hairline">
+            <div>
+              <p className="text-xs text-ink-500">Allocated to prizes</p>
+              <p className="font-semibold text-ink-900 tnum">{formatNaira(pool.allocated_kobo)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-ink-500">Platform profit</p>
+              <p className={`font-semibold tnum ${(pool.platform_profit_kobo ?? 0) < 0 ? 'text-status-danger' : 'text-ink-900'}`}>
+                {formatNaira(pool.platform_profit_kobo ?? 0)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h2 className="text-lg font-semibold text-ink-900 tracking-tight mb-1">Additional prizes</h2>
+        <p className="text-sm text-ink-500 mb-4">
+          One-off or bonus prizes on top of the default split above — e.g. an H2H cup, a monthly bonus, or a special-occasion
+          prize. These are flat amounts, not a percentage of the pool.
+        </p>
 
         <form onSubmit={handleSubmit} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-4">
-          <h2 className="label-eyebrow">Add a prize rule</h2>
+          <h3 className="label-eyebrow">Add a prize</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
-              placeholder="Label, e.g. Gameweek Winner"
+              placeholder="Label, e.g. H2H Cup Winner"
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               required
@@ -167,11 +402,11 @@ export default function PrizeRulesPage() {
             className="flex items-center gap-2 bg-brand-purple text-white font-medium px-4 py-2 rounded-lg disabled:opacity-50"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Add Rule
+            Add Prize
           </button>
         </form>
 
-        <div className="overflow-x-auto rounded-card border border-hairline shadow-sm">
+        <div className="overflow-x-auto rounded-card border border-hairline shadow-sm mt-4">
           <table className="w-full text-sm">
             <thead className="bg-ink-100 text-ink-500 text-left">
               <tr>
@@ -270,16 +505,30 @@ export default function PrizeRulesPage() {
                     <td className="px-4 py-3">{r.scope}</td>
                     <td className="px-4 py-3">{r.competition_type}</td>
                     <td className="px-4 py-3">{r.rank_target}</td>
-                    <td className="px-4 py-3">₦{(r.amount_kobo / 100).toLocaleString()}</td>
+                    <td className="px-4 py-3">{r.amount_kobo != null ? formatNaira(r.amount_kobo) : '—'}</td>
                     <td className="px-4 py-3">{r.is_active ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => startEdit(r)}
-                        className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => startEdit(r)}
+                          className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(r)}
+                          disabled={deletingId === r.id}
+                          className="flex items-center gap-1.5 bg-white border border-hairline hover:border-status-danger hover:text-status-danger text-xs px-3 py-1.5 rounded-md text-ink-700 disabled:opacity-50"
+                        >
+                          {deletingId === r.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -287,13 +536,14 @@ export default function PrizeRulesPage() {
               {rules.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-ink-500">
-                    No prize rules configured yet for the current season.
+                    No additional prizes configured for the current season.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+      </div>
     </AdminLayout>
   )
 }

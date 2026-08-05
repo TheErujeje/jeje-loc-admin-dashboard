@@ -145,7 +145,7 @@ export async function fetchSeasonUsers(seasonId: string) {
 
 export async function resetUserPassword(userId: string) {
   const res = await authedFetch(`/admin/users/${userId}/reset-password`, { method: 'POST' })
-  return handle<{ temporary_password: string }>(res)
+  return handle<{ emailed_to: string }>(res)
 }
 
 export async function fetchPayouts(seasonId?: string, status?: string) {
@@ -174,7 +174,10 @@ export interface PrizeRule {
   scope: string
   competition_type: string
   rank_target: number
-  amount_kobo: number
+  rank_target_end: number | null
+  amount_kobo: number | null
+  percent_of_pool: number | null
+  slot_key: string | null
   is_active: boolean
 }
 
@@ -218,6 +221,33 @@ export async function updatePrizeRule(
   return handle<PrizeRule>(res)
 }
 
+export async function deletePrizeRule(ruleId: string) {
+  const res = await authedFetch(`/admin/prize-rules/${ruleId}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Request failed (${res.status})`)
+  }
+}
+
+export interface WeeklyPrizeConfig {
+  enabled: boolean
+  amount_kobo: number
+}
+
+export interface SeasonPrizesConfig {
+  winner_percent: number
+  runner_up_percent: number
+  third_place_percent: number
+  fourth_to_tenth_percent: number
+  eleventh_to_fifteenth_percent: number
+}
+
+export interface PrizePoolConfig {
+  minimum_players: number
+  weekly_prize: WeeklyPrizeConfig
+  season_prizes: SeasonPrizesConfig
+}
+
 export interface Season {
   id: string
   label: string
@@ -232,6 +262,8 @@ export interface Season {
   season_ends_at: string | null
   fpl_start_event: number | null
   fpl_end_event: number | null
+  challenge_weekly_limit: number
+  prize_pool_config: PrizePoolConfig
   created_at: string
 }
 
@@ -240,13 +272,49 @@ export async function fetchSeasons() {
   return handle<Season[]>(res)
 }
 
-export async function updateSeasonEndsAt(seasonId: string, seasonEndsAt: string | null) {
+export async function updateSeason(
+  seasonId: string,
+  body: Partial<{
+    season_ends_at: string | null
+    entry_fee_kobo: number
+    challenge_weekly_limit: number
+    prize_pool_config: PrizePoolConfig
+  }>
+) {
   const res = await authedFetch(`/admin/seasons/${seasonId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ season_ends_at: seasonEndsAt }),
+    body: JSON.stringify(body),
   })
   return handle<Season>(res)
+}
+
+export interface PrizePoolSlot {
+  label: string
+  rank_range: string
+  percent: number
+  amount_kobo: number
+  per_rank_amount_kobo: number
+}
+
+export interface PrizePoolBreakdown {
+  season_id: string
+  pool_kobo: number
+  paid_entries: number
+  entry_fee_kobo: number
+  minimum_players: number
+  minimum_players_met: boolean
+  weekly_prize_enabled: boolean
+  weekly_prize_amount_kobo: number
+  season_prizes: PrizePoolSlot[]
+  other_prizes: PrizeRule[]
+  allocated_kobo: number
+  platform_profit_kobo: number | null
+}
+
+export async function fetchAdminPrizePool(seasonId: string) {
+  const res = await authedFetch(`/admin/prize-pool?season_id=${seasonId}`)
+  return handle<PrizePoolBreakdown>(res)
 }
 
 export interface StandingRow {
