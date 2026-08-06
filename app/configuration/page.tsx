@@ -19,6 +19,7 @@ type Draft = {
   endsAt: string
   entryFeeNaira: number
   weeklyLimit: number
+  prizeEligibilityCutoffEvent: number | ''
   prizePool: PrizePoolConfig
 }
 
@@ -27,6 +28,7 @@ function toDraft(s: Season): Draft {
     endsAt: toDatetimeLocal(s.season_ends_at),
     entryFeeNaira: s.entry_fee_kobo / 100,
     weeklyLimit: s.challenge_weekly_limit,
+    prizeEligibilityCutoffEvent: s.prize_eligibility_cutoff_event ?? '',
     prizePool: {
       minimum_players: s.prize_pool_config.minimum_players,
       weekly_prize: { ...s.prize_pool_config.weekly_prize, amount_kobo: s.prize_pool_config.weekly_prize.amount_kobo / 100 },
@@ -93,6 +95,9 @@ export default function ConfigurationPage() {
         season_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
         entry_fee_kobo: Math.round(draft.entryFeeNaira * 100),
         challenge_weekly_limit: draft.weeklyLimit,
+        ...(draft.prizeEligibilityCutoffEvent !== ''
+          ? { prize_eligibility_cutoff_event: draft.prizeEligibilityCutoffEvent }
+          : {}),
         prize_pool_config: {
           minimum_players: draft.prizePool.minimum_players,
           weekly_prize: {
@@ -176,7 +181,7 @@ export default function ConfigurationPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-hairline grid grid-cols-1 sm:grid-cols-3 gap-4 dark:border-ink-700">
+              <div className="pt-4 border-t border-hairline grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 dark:border-ink-700">
                 <div>
                   <label className="label-eyebrow block mb-2">Entry fee (₦)</label>
                   <input
@@ -206,6 +211,26 @@ export default function ConfigurationPage() {
                     onChange={(e) => setDraft(season.id, { endsAt: e.target.value })}
                     className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                   />
+                </div>
+                <div>
+                  <label className="label-eyebrow block mb-2">Season prize eligibility cutoff (GW)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={38}
+                    placeholder="e.g. 10"
+                    value={draft.prizeEligibilityCutoffEvent}
+                    onChange={(e) =>
+                      setDraft(season.id, {
+                        prizeEligibilityCutoffEvent: e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
+                  />
+                  <p className="text-xs text-ink-500 mt-1 dark:text-ink-400">
+                    Managers must register before this gameweek&apos;s deadline to be eligible for season-end
+                    prizes. Registration itself always stays open all season.
+                  </p>
                 </div>
               </div>
 

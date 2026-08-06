@@ -267,6 +267,7 @@ export interface Season {
   fpl_end_event: number | null
   challenge_weekly_limit: number
   prize_pool_config: PrizePoolConfig
+  prize_eligibility_cutoff_event: number | null
   created_at: string
 }
 
@@ -282,6 +283,7 @@ export async function updateSeason(
     entry_fee_kobo: number
     challenge_weekly_limit: number
     prize_pool_config: PrizePoolConfig
+    prize_eligibility_cutoff_event: number
   }>
 ) {
   const res = await authedFetch(`/admin/seasons/${seasonId}`, {
