@@ -37,6 +37,9 @@ function ApprovePayoutContent() {
     label: string | null
     amount_kobo: number
     event_id: number | null
+    bank_account_name: string | null
+    bank_account_number: string | null
+    bank_name: string | null
   } | null>(null)
 
   useEffect(() => {
@@ -84,6 +87,16 @@ function ApprovePayoutContent() {
             <p><span className="text-ink-500">Recipient:</span> <span className="font-medium text-ink-900">{preview.recipient_name || '—'}</span></p>
             <p><span className="text-ink-500">Prize:</span> <span className="font-medium text-ink-900">{preview.label || '—'}</span></p>
             <p><span className="text-ink-500">Amount:</span> <span className="font-medium text-ink-900">{formatNaira(preview.amount_kobo)}</span></p>
+            <p className="pt-2 border-t border-hairline">
+              <span className="text-ink-500">Sending to:</span>{' '}
+              {preview.bank_account_name ? (
+                <span className="font-medium text-ink-900">
+                  {preview.bank_account_name} — {preview.bank_name || 'Bank'} · {preview.bank_account_number}
+                </span>
+              ) : (
+                <span className="font-medium text-status-danger">Unverified — no resolved account name on file</span>
+              )}
+            </p>
           </div>
           <button
             onClick={handleConfirm}

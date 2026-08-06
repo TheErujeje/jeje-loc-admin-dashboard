@@ -24,6 +24,9 @@ export interface Payout {
   user_id: string
   full_name: string | null
   fpl_team_name: string | null
+  bank_account_name: string | null
+  bank_account_number: string | null
+  bank_name: string | null
   amount_kobo: number
   status: string
   failure_reason: string | null
@@ -350,7 +353,16 @@ export async function fetchNewEntries(seasonId: string) {
 
 export async function previewPayoutApproval(token: string) {
   const res = await fetch(`${API_BASE_URL}/payouts/approve/preview?token=${encodeURIComponent(token)}`)
-  return handle<{ payout_id: string; recipient_name: string | null; label: string | null; amount_kobo: number; event_id: number | null }>(res)
+  return handle<{
+    payout_id: string
+    recipient_name: string | null
+    label: string | null
+    amount_kobo: number
+    event_id: number | null
+    bank_account_name: string | null
+    bank_account_number: string | null
+    bank_name: string | null
+  }>(res)
 }
 
 export async function approvePayoutByToken(token: string) {

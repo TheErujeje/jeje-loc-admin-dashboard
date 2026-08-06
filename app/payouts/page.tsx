@@ -41,6 +41,11 @@ function PayoutRow({
       <td className="px-4 py-3 dark:text-ink-100">
         <div>{p.full_name || `#${p.user_id}`}</div>
         {p.fpl_team_name && <div className="text-ink-500 text-xs dark:text-ink-400">{p.fpl_team_name}</div>}
+        {p.bank_account_name && (
+          <div className="text-ink-500 text-xs dark:text-ink-400">
+            {p.bank_account_name} · {p.bank_name || 'Bank'} · {p.bank_account_number}
+          </div>
+        )}
       </td>
       <td className="px-4 py-3 text-ink-500 dark:text-ink-400">{p.prize_rule_label || '—'}</td>
       <td className="px-4 py-3 tnum dark:text-ink-100">₦{(p.amount_kobo / 100).toLocaleString()}</td>
@@ -281,6 +286,19 @@ export default function PayoutsPage() {
               </p>
               <p>{confirmTarget.payout.full_name || confirmTarget.payout.user_id}</p>
               <p className="font-semibold text-ink-900 dark:text-ink-100">₦{(confirmTarget.payout.amount_kobo / 100).toLocaleString()}</p>
+              {(confirmTarget.action === 'approve' || confirmTarget.action === 'retry') && (
+                <p className="pt-1 border-t border-hairline dark:border-ink-700 mt-1">
+                  <span className="text-ink-500 dark:text-ink-400">Sending to: </span>
+                  {confirmTarget.payout.bank_account_name ? (
+                    <span className="font-medium text-ink-900 dark:text-ink-100">
+                      {confirmTarget.payout.bank_account_name} — {confirmTarget.payout.bank_name || 'Bank'} ·{' '}
+                      {confirmTarget.payout.bank_account_number}
+                    </span>
+                  ) : (
+                    <span className="font-medium text-status-danger">Unverified — no resolved account name on file</span>
+                  )}
+                </p>
+              )}
             </div>
             <p className="text-ink-500 text-xs dark:text-ink-400">
               {confirmTarget.action === 'approve' &&
