@@ -403,6 +403,7 @@ export interface Challenge {
     creator_value?: number
     opponent_value?: number
     proposed_winner_league_entry_id?: string | null
+    tie_broken_by_draw?: boolean
   } | null
   payout_percent_snapshot: number
   created_at: string

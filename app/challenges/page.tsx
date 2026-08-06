@@ -67,8 +67,9 @@ export default function ChallengesPage() {
 
       <p className="text-sm text-ink-500 dark:text-ink-400">
         These challenges have finished their gameweek and are awaiting your confirmation. The
-        system&apos;s proposed winner is highlighted — override it if needed, or refund both stakes on
-        a tie or dispute. Confirming fires the Paystack payout (or refunds) immediately.
+        system&apos;s proposed winner is highlighted — for an exact tie, that&apos;s the result of a fair,
+        fixed random draw (not a real score difference), flagged below. Override it if needed, or
+        refund both stakes on a dispute. Confirming fires the Paystack payout (or refunds) immediately.
       </p>
 
       <div className="space-y-4">
@@ -81,7 +82,7 @@ export default function ChallengesPage() {
         {queue.map((c) => {
           const snapshot = c.result_snapshot
           const proposedWinner = snapshot?.proposed_winner_league_entry_id ?? null
-          const isTie = proposedWinner == null
+          const isTie = snapshot?.tie_broken_by_draw ?? false
           const busy = busyId === c.id
 
           return (
@@ -96,7 +97,7 @@ export default function ChallengesPage() {
                 </div>
                 {isTie && (
                   <span className="label-eyebrow flex items-center gap-1.5 text-status-warning">
-                    <AlertTriangle className="h-3.5 w-3.5" /> Exact tie
+                    <AlertTriangle className="h-3.5 w-3.5" /> Tied — fair draw picked a winner
                   </span>
                 )}
               </div>
