@@ -36,17 +36,17 @@ function PayoutRow({
 }) {
   const busy = busyId === p.id
   return (
-    <tr className="border-t border-hairline">
-      <td className="px-4 py-3">{p.event_id ? `GW${p.event_id}` : 'Season'}</td>
-      <td className="px-4 py-3">
+    <tr className="border-t border-hairline dark:border-ink-700 dark:bg-ink-800">
+      <td className="px-4 py-3 dark:text-ink-100">{p.event_id ? `GW${p.event_id}` : 'Season'}</td>
+      <td className="px-4 py-3 dark:text-ink-100">
         <div>{p.full_name || `#${p.user_id}`}</div>
-        {p.fpl_team_name && <div className="text-ink-500 text-xs">{p.fpl_team_name}</div>}
+        {p.fpl_team_name && <div className="text-ink-500 text-xs dark:text-ink-400">{p.fpl_team_name}</div>}
       </td>
-      <td className="px-4 py-3 text-ink-500">{p.prize_rule_label || '—'}</td>
-      <td className="px-4 py-3 tnum">₦{(p.amount_kobo / 100).toLocaleString()}</td>
+      <td className="px-4 py-3 text-ink-500 dark:text-ink-400">{p.prize_rule_label || '—'}</td>
+      <td className="px-4 py-3 tnum dark:text-ink-100">₦{(p.amount_kobo / 100).toLocaleString()}</td>
       <td className={`px-4 py-3 font-semibold ${STATUS_COLORS[p.status] || ''}`}>{p.status.replace('_', ' ')}</td>
       {showFailure && <td className="px-4 py-3 text-status-danger text-xs max-w-xs truncate">{p.failure_reason || '—'}</td>}
-      <td className="px-4 py-3 text-ink-500">{new Date(p.calculated_at).toLocaleDateString()}</td>
+      <td className="px-4 py-3 text-ink-500 dark:text-ink-400">{new Date(p.calculated_at).toLocaleDateString()}</td>
       {showAction && (
         <td className="px-4 py-3">
           <div className="flex flex-wrap gap-2">
@@ -104,9 +104,9 @@ function PayoutTable({
 }) {
   const colCount = 6 + (showFailure ? 1 : 0) + (showAction ? 1 : 0)
   return (
-    <div className="overflow-x-auto rounded-card border border-hairline shadow-sm">
+    <div className="overflow-x-auto rounded-card border border-hairline shadow-sm dark:border-ink-700">
       <table className="w-full text-sm">
-        <thead className="bg-ink-100 text-ink-500 text-left">
+        <thead className="bg-ink-100 text-ink-500 text-left dark:bg-white/5 dark:text-ink-400">
           <tr>
             <th className="px-4 py-3 font-medium">Gameweek</th>
             <th className="px-4 py-3 font-medium">Manager</th>
@@ -124,7 +124,7 @@ function PayoutTable({
           ))}
           {payouts.length === 0 && (
             <tr>
-              <td colSpan={colCount} className="px-4 py-8 text-center text-ink-500">
+              <td colSpan={colCount} className="px-4 py-8 text-center text-ink-500 dark:text-ink-400">
                 {emptyLabel}
               </td>
             </tr>
@@ -210,20 +210,20 @@ export default function PayoutsPage() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-semibold text-ink-900 tracking-tight">Payouts</h1>
+        <h1 className="text-2xl font-semibold text-ink-900 tracking-tight dark:text-ink-100">Payouts</h1>
         <button
           onClick={handleSync}
           disabled={busy}
-          className="flex items-center gap-2 bg-white border border-hairline hover:border-brand-purple px-4 py-2 rounded-lg text-sm text-ink-700 disabled:opacity-50"
+          className="flex items-center gap-2 bg-white border border-hairline hover:border-brand-purple px-4 py-2 rounded-lg text-sm text-ink-700 disabled:opacity-50 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-300 dark:hover:border-brand-lilac"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           Sync &amp; Calculate Now
         </button>
       </div>
 
-      {message && <p className="text-sm text-ink-500">{message}</p>}
+      {message && <p className="text-sm text-ink-500 dark:text-ink-400">{message}</p>}
 
-      <p className="text-sm text-ink-500">
+      <p className="text-sm text-ink-500 dark:text-ink-400">
         This normally runs automatically every 15 minutes via the backend scheduler — this button
         is for manually forcing a check on the season selected above. Approve a pending payout
         below, or via the emailed link — either way fires the same Paystack transfer.
@@ -265,24 +265,24 @@ export default function PayoutsPage() {
 
       {confirmTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-hairline rounded-card shadow-sm p-6 max-w-md w-full space-y-4">
+          <div className="bg-white border border-hairline rounded-card shadow-sm p-6 max-w-md w-full space-y-4 dark:bg-ink-800 dark:border-ink-700">
             <div className="flex items-center gap-3 text-status-warning">
               <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-              <h3 className="font-semibold text-lg text-ink-900">
+              <h3 className="font-semibold text-lg text-ink-900 dark:text-ink-100">
                 {confirmTarget.action === 'approve' && 'Approve this payout?'}
                 {confirmTarget.action === 'retry' && 'Retry this payout?'}
                 {confirmTarget.action === 'settle_manual' && 'Mark as paid manually?'}
               </h3>
             </div>
-            <div className="text-sm text-ink-700 space-y-1 bg-ink-100 border border-hairline rounded-lg p-4">
+            <div className="text-sm text-ink-700 space-y-1 bg-ink-100 border border-hairline rounded-lg p-4 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-300">
               <p>
                 {confirmTarget.payout.event_id ? `GW${confirmTarget.payout.event_id}` : 'Season'} —{' '}
                 {confirmTarget.payout.prize_rule_label || 'Prize'}
               </p>
               <p>{confirmTarget.payout.full_name || confirmTarget.payout.user_id}</p>
-              <p className="font-semibold text-ink-900">₦{(confirmTarget.payout.amount_kobo / 100).toLocaleString()}</p>
+              <p className="font-semibold text-ink-900 dark:text-ink-100">₦{(confirmTarget.payout.amount_kobo / 100).toLocaleString()}</p>
             </div>
-            <p className="text-ink-500 text-xs">
+            <p className="text-ink-500 text-xs dark:text-ink-400">
               {confirmTarget.action === 'approve' &&
                 "This fires the Paystack transfer immediately and can't be undone from here."}
               {confirmTarget.action === 'retry' &&
@@ -293,7 +293,7 @@ export default function PayoutsPage() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmTarget(null)}
-                className="px-4 py-2 rounded-lg text-sm text-ink-500 hover:text-ink-900"
+                className="px-4 py-2 rounded-lg text-sm text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100"
               >
                 Cancel
               </button>

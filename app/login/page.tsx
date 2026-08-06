@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShieldCheck, Loader2, ArrowRight, Wallet, Swords, Users } from 'lucide-react'
+import { Loader2, ArrowRight, Wallet, Swords, Users } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { Logo } from '@/components/Logo'
 
 const BULLETS = [
   { icon: Wallet, title: 'Payout approvals', sub: 'Review, approve, retry, or settle manually.' },
@@ -41,7 +42,7 @@ export default function LoginPage() {
 
         <div className="relative flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-white" />
+            <Logo className="h-12 w-12 text-white" />
             <span className="font-semibold text-white tracking-tight">LOC Admin</span>
           </span>
           <span className="text-[12.5px] font-medium text-white/70">Welcome back.</span>
@@ -74,12 +75,12 @@ export default function LoginPage() {
       </aside>
 
       {/* Form panel */}
-      <main className="relative flex min-h-screen flex-col bg-white">
+      <main className="relative flex min-h-screen flex-col bg-white dark:bg-ink-900">
         {/* Mobile brand strip */}
         <div className="auth-strip relative flex items-center justify-between overflow-hidden px-5 py-4 lg:hidden">
           <div className="auth-strip-mesh" aria-hidden="true" />
           <span className="relative flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-white" />
+            <Logo className="h-10 w-10 text-white" />
             <span className="font-semibold text-white tracking-tight">LOC Admin</span>
           </span>
           <span className="relative text-[11.5px] font-medium text-white/70">Welcome back.</span>
@@ -88,24 +89,24 @@ export default function LoginPage() {
         <div className="flex flex-1 items-center justify-center px-5 py-8 sm:px-8">
           <div className="w-full max-w-[440px]">
             <div className="mb-6">
-              <h1 className="text-[25px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink-900 sm:text-[27px]">
+              <h1 className="text-[25px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink-900 sm:text-[27px] dark:text-ink-100">
                 Sign in
               </h1>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <label className="block">
-                <span className="mb-1.5 block text-[12.5px] font-medium text-ink-700">Email</span>
+                <span className="mb-1.5 block text-[12.5px] font-medium text-ink-700 dark:text-ink-300">Email</span>
                 <input
                   type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 w-full rounded-[10px] border border-hairline bg-ink-100 px-3.5 text-[13.5px] text-ink-900 transition-colors placeholder:text-ink-400 focus:bg-white focus:outline-none focus:border-brand-purple"
+                  className="h-11 w-full rounded-[10px] border border-hairline bg-ink-100 px-3.5 text-[13.5px] text-ink-900 transition-colors placeholder:text-ink-400 focus:bg-white focus:outline-none focus:border-brand-purple dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100 dark:focus:bg-ink-800 dark:focus:border-brand-lilac"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-[12.5px] font-medium text-ink-700">Password</span>
+                <span className="mb-1.5 block text-[12.5px] font-medium text-ink-700 dark:text-ink-300">Password</span>
                 <input
                   type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 w-full rounded-[10px] border border-hairline bg-ink-100 px-3.5 text-[13.5px] text-ink-900 transition-colors placeholder:text-ink-400 focus:bg-white focus:outline-none focus:border-brand-purple"
+                  className="h-11 w-full rounded-[10px] border border-hairline bg-ink-100 px-3.5 text-[13.5px] text-ink-900 transition-colors placeholder:text-ink-400 focus:bg-white focus:outline-none focus:border-brand-purple dark:border-ink-700 dark:bg-ink-800 dark:text-ink-100 dark:focus:bg-ink-800 dark:focus:border-brand-lilac"
                 />
               </label>
 
@@ -129,7 +130,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <footer className="px-6 py-4 text-center text-[11.5px] text-ink-400">
+        <footer className="px-6 py-4 text-center text-[11.5px] text-ink-400 dark:text-ink-600">
           © {new Date().getFullYear()} Jeje&apos;s <span className="font-semibold">League of Champions</span>
         </footer>
       </main>

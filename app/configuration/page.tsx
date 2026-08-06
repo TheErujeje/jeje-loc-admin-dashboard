@@ -115,19 +115,19 @@ export default function ConfigurationPage() {
 
   return (
     <AdminLayout>
-      <h1 className="text-2xl font-semibold text-ink-900 tracking-tight">Configuration</h1>
+      <h1 className="text-2xl font-semibold text-ink-900 tracking-tight dark:text-ink-100">Configuration</h1>
 
       {activeSeason ? (
-        <div className="bg-white border border-hairline rounded-card shadow-sm p-6">
-          <p className="label-eyebrow text-brand-purple mb-2">Active season</p>
-          <p className="text-3xl font-semibold text-ink-900 tracking-tight">{activeSeason.label}</p>
-          <p className="text-ink-500 text-sm mt-1">
+        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 dark:bg-ink-800 dark:border-ink-700">
+          <p className="label-eyebrow text-brand-purple dark:text-brand-lilac mb-2">Active season</p>
+          <p className="text-3xl font-semibold text-ink-900 tracking-tight dark:text-ink-100">{activeSeason.label}</p>
+          <p className="text-ink-500 text-sm mt-1 dark:text-ink-400">
             {activeSeason.status === 'registration_open' ? 'Registration open' : 'In progress'} &middot;{' '}
             {activeSeason.fpl_league_name || 'League name not set'}
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 text-ink-500 text-sm">
+        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 text-ink-500 text-sm dark:bg-ink-800 dark:border-ink-700 dark:text-ink-400">
           No active or registration-open season right now.
         </div>
       )}
@@ -141,13 +141,13 @@ export default function ConfigurationPage() {
           const percentTotal = PRIZE_PERCENT_FIELDS.reduce((sum, f) => sum + (draft.prizePool.season_prizes[f.key] || 0), 0)
 
           return (
-            <div key={season.id} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-6">
+            <div key={season.id} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-6 dark:bg-ink-800 dark:border-ink-700">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-ink-900 tracking-tight">{season.label}</h2>
+                  <h2 className="text-xl font-semibold text-ink-900 tracking-tight dark:text-ink-100">{season.label}</h2>
                   <span
                     className={`text-xs font-medium ${
-                      ACTIVE_STATUSES.includes(season.status) ? 'text-status-success' : 'text-ink-500'
+                      ACTIVE_STATUSES.includes(season.status) ? 'text-status-success' : 'text-ink-500 dark:text-ink-400'
                     }`}
                   >
                     {season.status.replace('_', ' ')}
@@ -158,25 +158,25 @@ export default function ConfigurationPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="label-eyebrow mb-1">FPL League</p>
-                  <p className="text-ink-700">{season.fpl_league_name || '—'}</p>
+                  <p className="text-ink-700 dark:text-ink-300">{season.fpl_league_name || '—'}</p>
                 </div>
                 <div>
                   <p className="label-eyebrow mb-1">Join Code</p>
-                  <p className="text-ink-700 font-mono">{season.fpl_league_join_code || '—'}</p>
+                  <p className="text-ink-700 font-mono dark:text-ink-300">{season.fpl_league_join_code || '—'}</p>
                 </div>
                 <div>
                   <p className="label-eyebrow mb-1">Gameweeks</p>
-                  <p className="text-ink-700">
+                  <p className="text-ink-700 dark:text-ink-300">
                     {season.fpl_start_event ?? '—'} – {season.fpl_end_event ?? '—'}
                   </p>
                 </div>
                 <div>
                   <p className="label-eyebrow mb-1">Created</p>
-                  <p className="text-ink-700">{new Date(season.created_at).toLocaleDateString()}</p>
+                  <p className="text-ink-700 dark:text-ink-300">{new Date(season.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-hairline grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="pt-4 border-t border-hairline grid grid-cols-1 sm:grid-cols-3 gap-4 dark:border-ink-700">
                 <div>
                   <label className="label-eyebrow block mb-2">Entry fee (₦)</label>
                   <input
@@ -184,7 +184,7 @@ export default function ConfigurationPage() {
                     min={0}
                     value={draft.entryFeeNaira}
                     onChange={(e) => setDraft(season.id, { entryFeeNaira: Number(e.target.value) })}
-                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                   />
                 </div>
                 <div>
@@ -195,7 +195,7 @@ export default function ConfigurationPage() {
                     max={100}
                     value={draft.weeklyLimit}
                     onChange={(e) => setDraft(season.id, { weeklyLimit: Number(e.target.value) })}
-                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                   />
                 </div>
                 <div>
@@ -204,17 +204,17 @@ export default function ConfigurationPage() {
                     type="datetime-local"
                     value={draft.endsAt}
                     onChange={(e) => setDraft(season.id, { endsAt: e.target.value })}
-                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                    className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-hairline space-y-4">
+              <div className="pt-4 border-t border-hairline space-y-4 dark:border-ink-700">
                 <p className="label-eyebrow">Prize pool</p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs text-ink-500 block mb-2">Minimum players for prizes to run</label>
+                    <label className="text-xs text-ink-500 block mb-2 dark:text-ink-400">Minimum players for prizes to run</label>
                     <input
                       type="number"
                       min={0}
@@ -222,7 +222,7 @@ export default function ConfigurationPage() {
                       onChange={(e) =>
                         setDraft(season.id, { prizePool: { ...draft.prizePool, minimum_players: Number(e.target.value) } })
                       }
-                      className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900"
+                      className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                     />
                   </div>
                   <div className="flex items-center gap-2 pt-6">
@@ -237,12 +237,12 @@ export default function ConfigurationPage() {
                       }
                       className="h-4 w-4"
                     />
-                    <label htmlFor={`weekly-enabled-${season.id}`} className="text-xs text-ink-500">
+                    <label htmlFor={`weekly-enabled-${season.id}`} className="text-xs text-ink-500 dark:text-ink-400">
                       Weekly gameweek-winner prize enabled
                     </label>
                   </div>
                   <div>
-                    <label className="text-xs text-ink-500 block mb-2">Weekly prize amount (₦)</label>
+                    <label className="text-xs text-ink-500 block mb-2 dark:text-ink-400">Weekly prize amount (₦)</label>
                     <input
                       type="number"
                       min={0}
@@ -256,19 +256,19 @@ export default function ConfigurationPage() {
                           },
                         })
                       }
-                      className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 disabled:opacity-50"
+                      className="w-full bg-white border border-hairline rounded-lg px-4 py-2 text-sm text-ink-900 disabled:opacity-50 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs text-ink-500 mb-2">
+                  <p className="text-xs text-ink-500 mb-2 dark:text-ink-400">
                     Season-end split — percent of the collected registration pool paid to each rank
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                     {PRIZE_PERCENT_FIELDS.map((f) => (
                       <div key={f.key}>
-                        <label className="text-xs text-ink-500 block mb-1">{f.label}</label>
+                        <label className="text-xs text-ink-500 block mb-1 dark:text-ink-400">{f.label}</label>
                         <div className="relative">
                           <input
                             type="number"
@@ -276,43 +276,43 @@ export default function ConfigurationPage() {
                             max={100}
                             value={draft.prizePool.season_prizes[f.key]}
                             onChange={(e) => setPrizePercent(season.id, f.key, Number(e.target.value))}
-                            className="w-full bg-white border border-hairline rounded-lg pl-3 pr-7 py-2 text-sm text-ink-900"
+                            className="w-full bg-white border border-hairline rounded-lg pl-3 pr-7 py-2 text-sm text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <p className={`text-xs mt-2 ${percentTotal > 100 ? 'text-status-danger' : 'text-ink-500'}`}>
+                  <p className={`text-xs mt-2 ${percentTotal > 100 ? 'text-status-danger' : 'text-ink-500 dark:text-ink-400'}`}>
                     Total: {percentTotal}%{percentTotal > 100 ? ' — exceeds 100% of the pool' : ''}
                   </p>
                 </div>
               </div>
 
               {breakdowns[season.id] && (
-                <div className="pt-4 border-t border-hairline">
+                <div className="pt-4 border-t border-hairline dark:border-ink-700">
                   <p className="label-eyebrow mb-3">Current pool (live)</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                    <div className="bg-ink-100 rounded-lg p-3">
-                      <p className="text-xs text-ink-500">Collected</p>
-                      <p className="font-semibold text-ink-900">₦{(breakdowns[season.id].pool_kobo / 100).toLocaleString()}</p>
+                    <div className="bg-ink-100 rounded-lg p-3 dark:bg-white/5">
+                      <p className="text-xs text-ink-500 dark:text-ink-400">Collected</p>
+                      <p className="font-semibold text-ink-900 dark:text-ink-100">₦{(breakdowns[season.id].pool_kobo / 100).toLocaleString()}</p>
                     </div>
-                    <div className="bg-ink-100 rounded-lg p-3">
-                      <p className="text-xs text-ink-500">Paid entries</p>
-                      <p className="font-semibold text-ink-900">
+                    <div className="bg-ink-100 rounded-lg p-3 dark:bg-white/5">
+                      <p className="text-xs text-ink-500 dark:text-ink-400">Paid entries</p>
+                      <p className="font-semibold text-ink-900 dark:text-ink-100">
                         {breakdowns[season.id].paid_entries}
                         {breakdowns[season.id].minimum_players > 0 && (
-                          <span className="text-xs text-ink-500 font-normal"> / {breakdowns[season.id].minimum_players} min</span>
+                          <span className="text-xs text-ink-500 font-normal dark:text-ink-400"> / {breakdowns[season.id].minimum_players} min</span>
                         )}
                       </p>
                     </div>
-                    <div className="bg-ink-100 rounded-lg p-3">
-                      <p className="text-xs text-ink-500">Allocated to prizes</p>
-                      <p className="font-semibold text-ink-900">₦{(breakdowns[season.id].allocated_kobo / 100).toLocaleString()}</p>
+                    <div className="bg-ink-100 rounded-lg p-3 dark:bg-white/5">
+                      <p className="text-xs text-ink-500 dark:text-ink-400">Allocated to prizes</p>
+                      <p className="font-semibold text-ink-900 dark:text-ink-100">₦{(breakdowns[season.id].allocated_kobo / 100).toLocaleString()}</p>
                     </div>
-                    <div className="bg-ink-100 rounded-lg p-3">
-                      <p className="text-xs text-ink-500">Platform profit</p>
-                      <p className={`font-semibold ${(breakdowns[season.id].platform_profit_kobo ?? 0) < 0 ? 'text-status-danger' : 'text-ink-900'}`}>
+                    <div className="bg-ink-100 rounded-lg p-3 dark:bg-white/5">
+                      <p className="text-xs text-ink-500 dark:text-ink-400">Platform profit</p>
+                      <p className={`font-semibold ${(breakdowns[season.id].platform_profit_kobo ?? 0) < 0 ? 'text-status-danger' : 'text-ink-900 dark:text-ink-100'}`}>
                         ₦{((breakdowns[season.id].platform_profit_kobo ?? 0) / 100).toLocaleString()}
                       </p>
                     </div>
@@ -320,7 +320,7 @@ export default function ConfigurationPage() {
                 </div>
               )}
 
-              <div className="pt-4 border-t border-hairline flex items-center gap-3">
+              <div className="pt-4 border-t border-hairline flex items-center gap-3 dark:border-ink-700">
                 <button
                   onClick={() => handleSave(season.id)}
                   disabled={savingId === season.id}
@@ -340,7 +340,7 @@ export default function ConfigurationPage() {
           )
         })}
 
-        {seasons.length === 0 && <p className="text-ink-500 text-sm">No seasons found.</p>}
+        {seasons.length === 0 && <p className="text-ink-500 text-sm dark:text-ink-400">No seasons found.</p>}
       </div>
     </AdminLayout>
   )

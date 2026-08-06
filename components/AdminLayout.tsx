@@ -2,12 +2,14 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, LogOut, ShieldCheck } from 'lucide-react'
+import { Loader2, LogOut } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason, ACTIVE_STATUSES } from '@/lib/season'
 import { Sidebar } from './Sidebar'
 import { MobileBottomNav } from './MobileBottomNav'
 import { Select } from './ui/Select'
+import { Logo } from './Logo'
+import { ThemeToggle } from './ThemeToggle'
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { token, loading, logout } = useAuth()
@@ -19,25 +21,29 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   if (loading || !token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 text-brand-purple animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-ink-900">
+        <Loader2 className="h-8 w-8 text-brand-purple animate-spin dark:text-brand-lilac" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-white dark:bg-ink-900">
       <Sidebar />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-hairline bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-hairline bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-ink-700 dark:bg-ink-900/95">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-brand-purple" />
-            <span className="font-semibold text-ink-900 tracking-tight">LOC Admin</span>
+            <Logo className="h-10 w-10 text-brand-purple dark:text-brand-lilac" />
+            <span className="font-semibold text-ink-900 tracking-tight dark:text-ink-100">LOC Admin</span>
           </div>
-          <button onClick={logout} aria-label="Log out" className="text-ink-500 hover:text-status-danger">
+          <button onClick={logout} aria-label="Log out" className="text-ink-500 hover:text-status-danger dark:text-ink-400">
             <LogOut className="h-5 w-5" />
           </button>
         </header>
+
+        <div className="hidden lg:flex items-center justify-end px-8 pt-6">
+          <ThemeToggle />
+        </div>
 
         <main className="flex-1 min-w-0 px-4 sm:px-8 py-6 pb-24 sm:py-10 lg:pb-10">
           <div className="max-w-6xl mx-auto space-y-6">
@@ -61,7 +67,7 @@ function SeasonBar() {
       <Select
         value={seasonId}
         onChange={(e) => setSeasonId(e.target.value)}
-        className="bg-white border border-hairline rounded-lg pl-4 py-2 text-sm font-medium text-ink-900 shadow-sm focus:outline-none focus:border-brand-purple"
+        className="bg-white border border-hairline rounded-lg pl-4 py-2 text-sm font-medium text-ink-900 shadow-sm focus:outline-none focus:border-brand-purple dark:bg-ink-800 dark:border-ink-700 dark:text-ink-100 dark:focus:border-brand-lilac"
       >
         {seasons.map((s) => (
           <option key={s.id} value={s.id}>

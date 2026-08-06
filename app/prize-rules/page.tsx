@@ -207,10 +207,10 @@ export default function PrizeRulesPage() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-semibold text-ink-900 tracking-tight">Prizes</h1>
+        <h1 className="text-2xl font-semibold text-ink-900 tracking-tight dark:text-ink-100">Prizes</h1>
         <Link
           href="/configuration"
-          className="flex items-center gap-1.5 text-sm text-brand-purple hover:underline"
+          className="flex items-center gap-1.5 text-sm text-brand-purple hover:underline dark:text-brand-lilac"
         >
           <Settings className="h-4 w-4" />
           Entry fee, weekly limit &amp; more in Configuration
@@ -220,20 +220,20 @@ export default function PrizeRulesPage() {
       {error && <p className="text-status-danger text-sm">{error}</p>}
 
       {pool && (
-        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-6">
+        <div className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-6 dark:bg-ink-800 dark:border-ink-700">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="label-eyebrow text-brand-purple mb-1">Current prize pool</p>
-              <p className="text-3xl font-semibold text-ink-900 tracking-tight tnum">{formatNaira(pool.pool_kobo)}</p>
+              <p className="label-eyebrow text-brand-purple dark:text-brand-lilac mb-1">Current prize pool</p>
+              <p className="text-3xl font-semibold text-ink-900 tracking-tight tnum dark:text-ink-100">{formatNaira(pool.pool_kobo)}</p>
             </div>
-            <p className="text-sm text-ink-500">
+            <p className="text-sm text-ink-500 dark:text-ink-400">
               {pool.paid_entries} paid entries
               {pool.minimum_players > 0 && ` / ${pool.minimum_players} min`}
             </p>
           </div>
 
           {pool.weekly_prize_enabled && (
-            <div className="bg-ink-100 rounded-lg px-4 py-3 text-sm text-ink-700">
+            <div className="bg-ink-100 rounded-lg px-4 py-3 text-sm text-ink-700 dark:bg-white/5 dark:text-ink-300">
               <span className="font-semibold tnum">{formatNaira(pool.weekly_prize_amount_kobo)}</span> paid to the gameweek
               winner, every gameweek.
             </div>
@@ -251,7 +251,7 @@ export default function PrizeRulesPage() {
                 {!editingPercents && (
                   <button
                     onClick={startEditPercents}
-                    className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700"
+                    className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-300 dark:hover:border-brand-lilac"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
@@ -268,10 +268,10 @@ export default function PrizeRulesPage() {
                   ? Math.floor((pool.pool_kobo * percent) / 100 / rangeSize)
                   : slot.per_rank_amount_kobo
                 return (
-                  <div key={slot.label} className="bg-ink-100 rounded-lg p-3 text-center">
-                    <Trophy className="h-4 w-4 mx-auto text-brand-purple mb-1" />
-                    <p className="text-xs text-ink-500 mb-1">{slot.rank_range}</p>
-                    <p className="font-semibold text-sm tnum text-ink-900">{formatNaira(previewPerRank)}</p>
+                  <div key={slot.label} className="bg-ink-100 rounded-lg p-3 text-center dark:bg-white/5">
+                    <Trophy className="h-4 w-4 mx-auto text-brand-purple mb-1 dark:text-brand-lilac" />
+                    <p className="text-xs text-ink-500 mb-1 dark:text-ink-400">{slot.rank_range}</p>
+                    <p className="font-semibold text-sm tnum text-ink-900 dark:text-ink-100">{formatNaira(previewPerRank)}</p>
                     {editingPercents ? (
                       <div className="relative mt-2">
                         <input
@@ -283,7 +283,7 @@ export default function PrizeRulesPage() {
                             setPercentsSaved(false)
                             setPercentDraft((prev) => (prev ? { ...prev, [key]: Number(e.target.value) } : prev))
                           }}
-                          className="w-full bg-white border border-hairline rounded-md pl-2 pr-6 py-1 text-xs text-ink-900 text-center"
+                          className="w-full bg-white border border-hairline rounded-md pl-2 pr-6 py-1 text-xs text-ink-900 text-center dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-400">%</span>
                       </div>
@@ -309,7 +309,7 @@ export default function PrizeRulesPage() {
                   <button
                     onClick={cancelEditPercents}
                     disabled={savingPercents}
-                    className="flex items-center gap-1.5 bg-white border border-hairline text-ink-500 font-medium text-xs px-3 py-1.5 rounded-md disabled:opacity-50"
+                    className="flex items-center gap-1.5 bg-white border border-hairline text-ink-500 font-medium text-xs px-3 py-1.5 rounded-md disabled:opacity-50 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-400"
                   >
                     <X className="h-3.5 w-3.5" />
                     Cancel
@@ -327,14 +327,14 @@ export default function PrizeRulesPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm pt-2 border-t border-hairline">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm pt-2 border-t border-hairline dark:border-ink-700">
             <div>
-              <p className="text-xs text-ink-500">Allocated to prizes</p>
-              <p className="font-semibold text-ink-900 tnum">{formatNaira(pool.allocated_kobo)}</p>
+              <p className="text-xs text-ink-500 dark:text-ink-400">Allocated to prizes</p>
+              <p className="font-semibold text-ink-900 tnum dark:text-ink-100">{formatNaira(pool.allocated_kobo)}</p>
             </div>
             <div>
-              <p className="text-xs text-ink-500">Platform profit</p>
-              <p className={`font-semibold tnum ${(pool.platform_profit_kobo ?? 0) < 0 ? 'text-status-danger' : 'text-ink-900'}`}>
+              <p className="text-xs text-ink-500 dark:text-ink-400">Platform profit</p>
+              <p className={`font-semibold tnum ${(pool.platform_profit_kobo ?? 0) < 0 ? 'text-status-danger' : 'text-ink-900 dark:text-ink-100'}`}>
                 {formatNaira(pool.platform_profit_kobo ?? 0)}
               </p>
             </div>
@@ -343,13 +343,13 @@ export default function PrizeRulesPage() {
       )}
 
       <div>
-        <h2 className="text-lg font-semibold text-ink-900 tracking-tight mb-1">Additional prizes</h2>
-        <p className="text-sm text-ink-500 mb-4">
+        <h2 className="text-lg font-semibold text-ink-900 tracking-tight mb-1 dark:text-ink-100">Additional prizes</h2>
+        <p className="text-sm text-ink-500 mb-4 dark:text-ink-400">
           One-off or bonus prizes on top of the default split above — e.g. an H2H cup, a monthly bonus, or a special-occasion
           prize. These are flat amounts, not a percentage of the pool.
         </p>
 
-        <form onSubmit={handleSubmit} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white border border-hairline rounded-card shadow-sm p-6 space-y-4 dark:bg-ink-800 dark:border-ink-700">
           <h3 className="label-eyebrow">Add a prize</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
@@ -357,12 +357,12 @@ export default function PrizeRulesPage() {
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               required
-              className="bg-white border border-hairline rounded-lg px-4 py-2 text-ink-900"
+              className="bg-white border border-hairline rounded-lg px-4 py-2 text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
             />
             <Select
               value={form.scope}
               onChange={(e) => setForm({ ...form, scope: e.target.value })}
-              className="bg-white border border-hairline rounded-lg pl-4 py-2 text-ink-900 focus:outline-none focus:border-brand-purple"
+              className="bg-white border border-hairline rounded-lg pl-4 py-2 text-ink-900 focus:outline-none focus:border-brand-purple dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100 dark:focus:border-brand-lilac"
             >
               <option value="gameweek">Gameweek (weekly)</option>
               <option value="monthly">Monthly</option>
@@ -372,7 +372,7 @@ export default function PrizeRulesPage() {
             <Select
               value={form.competition_type}
               onChange={(e) => setForm({ ...form, competition_type: e.target.value })}
-              className="bg-white border border-hairline rounded-lg pl-4 py-2 text-ink-900 focus:outline-none focus:border-brand-purple"
+              className="bg-white border border-hairline rounded-lg pl-4 py-2 text-ink-900 focus:outline-none focus:border-brand-purple dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100 dark:focus:border-brand-lilac"
             >
               <option value="classic">Classic</option>
               <option value="h2h">Head-to-Head</option>
@@ -383,7 +383,7 @@ export default function PrizeRulesPage() {
               placeholder="Rank target (1 = winner)"
               value={form.rank_target}
               onChange={(e) => setForm({ ...form, rank_target: Number(e.target.value) })}
-              className="bg-white border border-hairline rounded-lg px-4 py-2 text-ink-900"
+              className="bg-white border border-hairline rounded-lg px-4 py-2 text-ink-900 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
             />
             <input
               type="number"
@@ -392,7 +392,7 @@ export default function PrizeRulesPage() {
               value={form.amount_naira || ''}
               onChange={(e) => setForm({ ...form, amount_naira: Number(e.target.value) })}
               required
-              className="bg-white border border-hairline rounded-lg px-4 py-2 text-ink-900 sm:col-span-2"
+              className="bg-white border border-hairline rounded-lg px-4 py-2 text-ink-900 sm:col-span-2 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
             />
           </div>
           {error && <p className="text-status-danger text-sm">{error}</p>}
@@ -406,9 +406,9 @@ export default function PrizeRulesPage() {
           </button>
         </form>
 
-        <div className="overflow-x-auto rounded-card border border-hairline shadow-sm mt-4">
+        <div className="overflow-x-auto rounded-card border border-hairline shadow-sm mt-4 dark:border-ink-700">
           <table className="w-full text-sm">
-            <thead className="bg-ink-100 text-ink-500 text-left">
+            <thead className="bg-ink-100 text-ink-500 text-left dark:bg-white/5 dark:text-ink-400">
               <tr>
                 <th className="px-4 py-3 font-medium">Label</th>
                 <th className="px-4 py-3 font-medium">Scope</th>
@@ -422,12 +422,12 @@ export default function PrizeRulesPage() {
             <tbody>
               {rules.map((r) =>
                 editingId === r.id && editForm ? (
-                  <tr key={r.id} className="border-t border-hairline bg-ink-100/50">
+                  <tr key={r.id} className="border-t border-hairline bg-ink-100/50 dark:border-ink-700 dark:bg-white/5">
                     <td className="px-4 py-2">
                       <input
                         value={editForm.label}
                         onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
-                        className="w-full bg-white border border-hairline rounded-md px-2 py-1"
+                        className="w-full bg-white border border-hairline rounded-md px-2 py-1 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -435,7 +435,7 @@ export default function PrizeRulesPage() {
                         dense
                         value={editForm.scope}
                         onChange={(e) => setEditForm({ ...editForm, scope: e.target.value })}
-                        className="bg-white border border-hairline rounded-md pl-2 py-1 focus:outline-none focus:border-brand-purple"
+                        className="bg-white border border-hairline rounded-md pl-2 py-1 focus:outline-none focus:border-brand-purple dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100 dark:focus:border-brand-lilac"
                       >
                         <option value="gameweek">Gameweek</option>
                         <option value="monthly">Monthly</option>
@@ -448,7 +448,7 @@ export default function PrizeRulesPage() {
                         dense
                         value={editForm.competition_type}
                         onChange={(e) => setEditForm({ ...editForm, competition_type: e.target.value })}
-                        className="bg-white border border-hairline rounded-md pl-2 py-1 focus:outline-none focus:border-brand-purple"
+                        className="bg-white border border-hairline rounded-md pl-2 py-1 focus:outline-none focus:border-brand-purple dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100 dark:focus:border-brand-lilac"
                       >
                         <option value="classic">Classic</option>
                         <option value="h2h">H2H</option>
@@ -460,7 +460,7 @@ export default function PrizeRulesPage() {
                         min={1}
                         value={editForm.rank_target}
                         onChange={(e) => setEditForm({ ...editForm, rank_target: Number(e.target.value) })}
-                        className="w-16 bg-white border border-hairline rounded-md px-2 py-1"
+                        className="w-16 bg-white border border-hairline rounded-md px-2 py-1 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -469,7 +469,7 @@ export default function PrizeRulesPage() {
                         min={0}
                         value={editForm.amount_naira}
                         onChange={(e) => setEditForm({ ...editForm, amount_naira: Number(e.target.value) })}
-                        className="w-24 bg-white border border-hairline rounded-md px-2 py-1"
+                        className="w-24 bg-white border border-hairline rounded-md px-2 py-1 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -492,7 +492,7 @@ export default function PrizeRulesPage() {
                         <button
                           onClick={cancelEdit}
                           disabled={savingEdit}
-                          className="flex items-center gap-1 bg-white border border-hairline text-ink-500 text-xs px-2 py-1.5 rounded-md disabled:opacity-50"
+                          className="flex items-center gap-1 bg-white border border-hairline text-ink-500 text-xs px-2 py-1.5 rounded-md disabled:opacity-50 dark:bg-ink-900 dark:border-ink-700 dark:text-ink-400"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -500,18 +500,18 @@ export default function PrizeRulesPage() {
                     </td>
                   </tr>
                 ) : (
-                  <tr key={r.id} className="border-t border-hairline">
-                    <td className="px-4 py-3">{r.label}</td>
-                    <td className="px-4 py-3">{r.scope}</td>
-                    <td className="px-4 py-3">{r.competition_type}</td>
-                    <td className="px-4 py-3">{r.rank_target}</td>
-                    <td className="px-4 py-3">{r.amount_kobo != null ? formatNaira(r.amount_kobo) : '—'}</td>
-                    <td className="px-4 py-3">{r.is_active ? 'Yes' : 'No'}</td>
+                  <tr key={r.id} className="border-t border-hairline dark:border-ink-700 dark:bg-ink-800">
+                    <td className="px-4 py-3 dark:text-ink-100">{r.label}</td>
+                    <td className="px-4 py-3 dark:text-ink-100">{r.scope}</td>
+                    <td className="px-4 py-3 dark:text-ink-100">{r.competition_type}</td>
+                    <td className="px-4 py-3 dark:text-ink-100">{r.rank_target}</td>
+                    <td className="px-4 py-3 dark:text-ink-100">{r.amount_kobo != null ? formatNaira(r.amount_kobo) : '—'}</td>
+                    <td className="px-4 py-3 dark:text-ink-100">{r.is_active ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => startEdit(r)}
-                          className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700"
+                          className="flex items-center gap-1.5 bg-white border border-hairline hover:border-brand-purple text-xs px-3 py-1.5 rounded-md text-ink-700 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-300 dark:hover:border-brand-lilac"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit
@@ -519,7 +519,7 @@ export default function PrizeRulesPage() {
                         <button
                           onClick={() => handleDelete(r)}
                           disabled={deletingId === r.id}
-                          className="flex items-center gap-1.5 bg-white border border-hairline hover:border-status-danger hover:text-status-danger text-xs px-3 py-1.5 rounded-md text-ink-700 disabled:opacity-50"
+                          className="flex items-center gap-1.5 bg-white border border-hairline hover:border-status-danger hover:text-status-danger text-xs px-3 py-1.5 rounded-md text-ink-700 disabled:opacity-50 dark:bg-ink-800 dark:border-ink-700 dark:text-ink-300"
                         >
                           {deletingId === r.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -535,7 +535,7 @@ export default function PrizeRulesPage() {
               )}
               {rules.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-ink-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-ink-500 dark:text-ink-400">
                     No additional prizes configured for the current season.
                   </td>
                 </tr>
