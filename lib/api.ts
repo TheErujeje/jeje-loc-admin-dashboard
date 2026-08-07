@@ -130,6 +130,7 @@ export async function fetchUsers() {
 
 export interface SeasonUser {
   user_id: string
+  league_entry_id: string
   fpl_entry_id: number
   email: string
   full_name: string
@@ -149,6 +150,11 @@ export async function fetchSeasonUsers(seasonId: string) {
 export async function resetUserPassword(userId: string) {
   const res = await authedFetch(`/admin/users/${userId}/reset-password`, { method: 'POST' })
   return handle<{ emailed_to: string }>(res)
+}
+
+export async function verifyLeagueEntryPayment(leagueEntryId: string) {
+  const res = await authedFetch(`/payments/admin/league-entries/${leagueEntryId}/verify`, { method: 'POST' })
+  return handle<{ payment_status: string; league_entry_status: string; changed: boolean }>(res)
 }
 
 export async function fetchPayouts(seasonId?: string, status?: string) {
