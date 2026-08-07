@@ -4,8 +4,18 @@ import { useEffect, useState } from 'react'
 import { Loader2, RefreshCw, Clock, CheckCircle2, XCircle, ShieldCheck, AlertTriangle, RotateCcw, HandCoins } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason } from '@/lib/season'
-import { fetchPayouts, triggerSyncAndCalculate, approvePayoutDirect, retryPayout, settlePayoutManually, type Payout } from '@/lib/api'
+import {
+  fetchPayouts,
+  fetchPayoutStats,
+  triggerSyncAndCalculate,
+  approvePayoutDirect,
+  retryPayout,
+  settlePayoutManually,
+  type Payout,
+  type PayoutStats,
+} from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
+import { StatRow, StatTile } from '@/components/StatTile'
 
 type PayoutAction = 'approve' | 'retry' | 'settle_manual'
 
@@ -144,6 +154,7 @@ export default function PayoutsPage() {
   const { token } = useAuth()
   const { seasonId } = useSeason()
   const [payouts, setPayouts] = useState<Payout[]>([])
+  const [stats, setStats] = useState<PayoutStats | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [actioningId, setActioningId] = useState<string | null>(null)
@@ -156,7 +167,15 @@ export default function PayoutsPage() {
       .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load payouts'))
   }
 
+  const loadStats = () => {
+    if (!token || !seasonId) return
+    fetchPayoutStats(seasonId)
+      .then(setStats)
+      .catch(() => setStats(null))
+  }
+
   useEffect(load, [token, seasonId])
+  useEffect(loadStats, [token, seasonId])
 
   const handleSync = async () => {
     if (!token || !seasonId) return
@@ -170,6 +189,7 @@ export default function PayoutsPage() {
           : 'Nothing new to calculate — no newly finished gameweeks and no new season prizes.'
       )
       load()
+      loadStats()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -201,6 +221,7 @@ export default function PayoutsPage() {
       const result = await ACTION_FN[action](p.id)
       setMessage(`${label} — ${p.full_name || p.user_id}: ${result.message}`)
       load()
+      loadStats()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : ACTION_FAIL_MESSAGE[action])
     } finally {
@@ -225,6 +246,30 @@ export default function PayoutsPage() {
           Sync &amp; Calculate Now
         </button>
       </div>
+
+      {stats && (
+        <StatRow>
+          <StatTile
+            label="Total paid out"
+            value={`₦${(stats.total_paid_out_kobo / 100).toLocaleString()}`}
+            icon={HandCoins}
+            tone="success"
+          />
+          <StatTile
+            label="Pending approval"
+            value={stats.pending_approval_count.toLocaleString()}
+            icon={Clock}
+            tone={stats.pending_approval_count > 0 ? 'warning' : 'default'}
+          />
+          <StatTile label="Processing" value={stats.processing_count.toLocaleString()} icon={RefreshCw} />
+          <StatTile
+            label="Failed"
+            value={stats.failed_count.toLocaleString()}
+            icon={XCircle}
+            tone={stats.failed_count > 0 ? 'danger' : 'default'}
+          />
+        </StatRow>
+      )}
 
       {message && <p className="text-sm text-ink-500 dark:text-ink-400">{message}</p>}
 

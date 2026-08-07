@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Swords, ShieldCheck, AlertTriangle, RotateCcw } from 'lucide-react'
+import { Loader2, Swords, ShieldCheck, AlertTriangle, RotateCcw, HandCoins } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { fetchArbitrationQueue, resolveChallenge, type Challenge } from '@/lib/api'
+import { useSeason } from '@/lib/season'
+import { fetchArbitrationQueue, fetchChallengeStats, resolveChallenge, type Challenge, type ChallengeStats } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
+import { StatRow, StatTile } from '@/components/StatTile'
 
 const TYPE_LABELS: Record<string, string> = {
   most_points: 'Most Points',
@@ -19,7 +21,9 @@ type ConfirmTarget =
 
 export default function ChallengesPage() {
   const { token } = useAuth()
+  const { seasonId } = useSeason()
   const [queue, setQueue] = useState<Challenge[]>([])
+  const [stats, setStats] = useState<ChallengeStats | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null)
@@ -30,6 +34,13 @@ export default function ChallengesPage() {
       .then(setQueue)
       .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load challenges'))
   }
+
+  useEffect(() => {
+    if (!token || !seasonId) return
+    fetchChallengeStats(seasonId)
+      .then(setStats)
+      .catch(() => setStats(null))
+  }, [token, seasonId])
 
   useEffect(load, [token])
 
@@ -48,6 +59,7 @@ export default function ChallengesPage() {
         setMessage('Both stakes refunded.')
       }
       load()
+      if (seasonId) fetchChallengeStats(seasonId).then(setStats).catch(() => {})
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Resolution failed')
     } finally {
@@ -62,6 +74,23 @@ export default function ChallengesPage() {
           <Swords className="h-6 w-6 text-brand-purple dark:text-brand-lilac" /> Challenge Arbitration
         </h1>
       </div>
+
+      {stats && (
+        <StatRow>
+          <StatTile label="Active challenges" value={stats.active_count.toLocaleString()} icon={Swords} />
+          <StatTile
+            label="Total staked this season"
+            value={`₦${(stats.total_staked_kobo / 100).toLocaleString()}`}
+            icon={HandCoins}
+          />
+          <StatTile
+            label="Awaiting arbitration"
+            value={stats.pending_arbitration_count.toLocaleString()}
+            icon={AlertTriangle}
+            tone={stats.pending_arbitration_count > 0 ? 'warning' : 'default'}
+          />
+        </StatRow>
+      )}
 
       {message && <p className="text-sm text-ink-500 dark:text-ink-400">{message}</p>}
 

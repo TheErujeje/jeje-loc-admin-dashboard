@@ -157,6 +157,43 @@ export async function verifyLeagueEntryPayment(leagueEntryId: string) {
   return handle<{ payment_status: string; league_entry_status: string; changed: boolean }>(res)
 }
 
+export interface SeasonUserStats {
+  total_registered: number
+  active_count: number
+  pending_payment_count: number
+  active_sessions_count: number
+  h2h_opt_in_percent: number
+  new_registrations_7d: number
+}
+
+export async function fetchSeasonUserStats(seasonId: string) {
+  const res = await authedFetch(`/admin/seasons/${seasonId}/user-stats`)
+  return handle<SeasonUserStats>(res)
+}
+
+export interface PayoutStats {
+  total_paid_out_kobo: number
+  pending_approval_count: number
+  processing_count: number
+  failed_count: number
+}
+
+export async function fetchPayoutStats(seasonId: string) {
+  const res = await authedFetch(`/payouts/stats?season_id=${seasonId}`)
+  return handle<PayoutStats>(res)
+}
+
+export interface ChallengeStats {
+  active_count: number
+  total_staked_kobo: number
+  pending_arbitration_count: number
+}
+
+export async function fetchChallengeStats(seasonId: string) {
+  const res = await authedFetch(`/admin/challenges/stats?season_id=${seasonId}`)
+  return handle<ChallengeStats>(res)
+}
+
 export async function fetchPayouts(seasonId?: string, status?: string) {
   const params = new URLSearchParams()
   if (status) params.set('status_filter', status)

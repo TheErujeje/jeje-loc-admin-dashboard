@@ -1,11 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { KeyRound, Loader2, RefreshCw } from 'lucide-react'
+import { KeyRound, Loader2, RefreshCw, Users, CheckCircle2, Clock, Wifi, Swords, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason, ACTIVE_STATUSES } from '@/lib/season'
-import { fetchSeasonUsers, resetUserPassword, verifyLeagueEntryPayment, type SeasonUser } from '@/lib/api'
+import {
+  fetchSeasonUsers,
+  fetchSeasonUserStats,
+  resetUserPassword,
+  verifyLeagueEntryPayment,
+  type SeasonUser,
+  type SeasonUserStats,
+} from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
+import { StatRow, StatTile } from '@/components/StatTile'
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'text-status-success',
@@ -16,17 +24,27 @@ export default function UsersPage() {
   const { token } = useAuth()
   const { seasonId, selectedSeason } = useSeason()
   const [users, setUsers] = useState<SeasonUser[]>([])
+  const [stats, setStats] = useState<SeasonUserStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [resettingUserId, setResettingUserId] = useState<string | null>(null)
   const [resetConfirmation, setResetConfirmation] = useState<string | null>(null)
   const [verifyingEntryId, setVerifyingEntryId] = useState<string | null>(null)
   const [verifyResult, setVerifyResult] = useState<{ message: string; success: boolean } | null>(null)
 
-  useEffect(() => {
+  const loadUsers = () => {
     if (!token || !seasonId) return
     fetchSeasonUsers(seasonId)
       .then(setUsers)
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load users'))
+  }
+
+  useEffect(loadUsers, [token, seasonId])
+
+  useEffect(() => {
+    if (!token || !seasonId) return
+    fetchSeasonUserStats(seasonId)
+      .then(setStats)
+      .catch(() => setStats(null))
   }, [token, seasonId])
 
   const handleResetPassword = async (userId: string) => {
@@ -55,7 +73,8 @@ export default function UsersPage() {
           message: `${u.full_name}'s payment was confirmed with Paystack — entry is now active.`,
           success: true,
         })
-        if (seasonId) fetchSeasonUsers(seasonId).then(setUsers).catch(() => {})
+        loadUsers()
+        if (seasonId) fetchSeasonUserStats(seasonId).then(setStats).catch(() => {})
       } else if (result.payment_status === 'success') {
         setVerifyResult({ message: `${u.full_name}'s payment was already confirmed.`, success: true })
       } else {
@@ -79,6 +98,26 @@ export default function UsersPage() {
         <p className="text-sm text-ink-500 dark:text-ink-400">
           Viewing a past season — {selectedSeason.label} is {selectedSeason.status}.
         </p>
+      )}
+
+      {stats && (
+        <StatRow>
+          <StatTile label="Registered" value={stats.total_registered.toLocaleString()} icon={Users} />
+          <StatTile label="Active" value={stats.active_count.toLocaleString()} icon={CheckCircle2} tone="success" />
+          <StatTile
+            label="Pending payment"
+            value={stats.pending_payment_count.toLocaleString()}
+            icon={Clock}
+            tone={stats.pending_payment_count > 0 ? 'warning' : 'default'}
+          />
+          <StatTile
+            label="Active sessions"
+            value={stats.active_sessions_count.toLocaleString()}
+            icon={Wifi}
+          />
+          <StatTile label="H2H opt-in" value={`${stats.h2h_opt_in_percent}%`} icon={Swords} />
+          <StatTile label="New this week" value={stats.new_registrations_7d.toLocaleString()} icon={TrendingUp} />
+        </StatRow>
       )}
 
       {error && <p className="text-status-danger text-sm">{error}</p>}
