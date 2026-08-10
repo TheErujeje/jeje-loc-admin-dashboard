@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { Loader2, RefreshCw, Clock, CheckCircle2, XCircle, ShieldCheck, AlertTriangle, RotateCcw, HandCoins } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason } from '@/lib/season'
@@ -12,7 +13,6 @@ import {
   retryPayout,
   settlePayoutManually,
   type Payout,
-  type PayoutStats,
 } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 import { StatRow, StatTile } from '@/components/StatTile'
@@ -153,45 +153,45 @@ function PayoutTable({
 export default function PayoutsPage() {
   const { token } = useAuth()
   const { seasonId } = useSeason()
-  const [payouts, setPayouts] = useState<Payout[]>([])
-  const [stats, setStats] = useState<PayoutStats | null>(null)
+  const canLoad = Boolean(token) && Boolean(seasonId)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ payout: Payout; action: PayoutAction } | null>(null)
 
-  const load = () => {
-    if (!token || !seasonId) return
-    fetchPayouts(seasonId)
-      .then(setPayouts)
-      .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load payouts'))
-  }
-
-  const loadStats = () => {
-    if (!token || !seasonId) return
-    fetchPayoutStats(seasonId)
-      .then(setStats)
-      .catch(() => setStats(null))
-  }
-
-  useEffect(load, [token, seasonId])
-  useEffect(loadStats, [token, seasonId])
+  // A payout's status can flip (Paystack transfer webhook, or another admin
+  // approving/retrying) while this page just sits open — poll rather than
+  // only refetch on navigation.
+  const {
+    data: payouts = [],
+    error: payoutsErrObj,
+    mutate: mutatePayouts,
+  } = useSWR(canLoad ? ['payouts', seasonId] : null, () => fetchPayouts(seasonId as string), {
+    refreshInterval: 30000,
+  })
+  const { data: stats, mutate: mutateStats } = useSWR(
+    canLoad ? ['payout-stats', seasonId] : null,
+    () => fetchPayoutStats(seasonId as string),
+    { refreshInterval: 30000 }
+  )
+  const message =
+    actionMessage ?? (payoutsErrObj ? (payoutsErrObj instanceof Error ? payoutsErrObj.message : 'Could not load payouts') : null)
 
   const handleSync = async () => {
     if (!token || !seasonId) return
     setBusy(true)
-    setMessage(null)
+    setActionMessage(null)
     try {
       const result = await triggerSyncAndCalculate(seasonId)
-      setMessage(
+      setActionMessage(
         result.newly_final_gameweeks.length || result.payouts_created
           ? `Synced GW ${result.newly_final_gameweeks.join(', ') || '—'} — ${result.payouts_created} payout(s) created.`
           : 'Nothing new to calculate — no newly finished gameweeks and no new season prizes.'
       )
-      load()
-      loadStats()
+      mutatePayouts()
+      mutateStats()
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Sync failed')
+      setActionMessage(err instanceof Error ? err.message : 'Sync failed')
     } finally {
       setBusy(false)
     }
@@ -216,14 +216,14 @@ export default function PayoutsPage() {
     const label = p.event_id ? `GW${p.event_id}` : 'Season'
     setConfirmTarget(null)
     setActioningId(p.id)
-    setMessage(null)
+    setActionMessage(null)
     try {
       const result = await ACTION_FN[action](p.id)
-      setMessage(`${label} — ${p.full_name || p.user_id}: ${result.message}`)
-      load()
-      loadStats()
+      setActionMessage(`${label} — ${p.full_name || p.user_id}: ${result.message}`)
+      mutatePayouts()
+      mutateStats()
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : ACTION_FAIL_MESSAGE[action])
+      setActionMessage(err instanceof Error ? err.message : ACTION_FAIL_MESSAGE[action])
     } finally {
       setActioningId(null)
     }

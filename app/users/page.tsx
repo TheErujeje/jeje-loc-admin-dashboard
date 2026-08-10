@@ -1,17 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { KeyRound, Loader2, RefreshCw, Users, CheckCircle2, Clock, Wifi, Swords, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason, ACTIVE_STATUSES } from '@/lib/season'
-import {
-  fetchSeasonUsers,
-  fetchSeasonUserStats,
-  resetUserPassword,
-  verifyLeagueEntryPayment,
-  type SeasonUser,
-  type SeasonUserStats,
-} from '@/lib/api'
+import { fetchSeasonUsers, fetchSeasonUserStats, resetUserPassword, verifyLeagueEntryPayment, type SeasonUser } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 import { StatRow, StatTile } from '@/components/StatTile'
 
@@ -23,29 +17,29 @@ const STATUS_COLORS: Record<string, string> = {
 export default function UsersPage() {
   const { token } = useAuth()
   const { seasonId, selectedSeason } = useSeason()
-  const [users, setUsers] = useState<SeasonUser[]>([])
-  const [stats, setStats] = useState<SeasonUserStats | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const canLoad = Boolean(token) && Boolean(seasonId)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [resettingUserId, setResettingUserId] = useState<string | null>(null)
   const [resetConfirmation, setResetConfirmation] = useState<string | null>(null)
   const [verifyingEntryId, setVerifyingEntryId] = useState<string | null>(null)
   const [verifyResult, setVerifyResult] = useState<{ message: string; success: boolean } | null>(null)
 
-  const loadUsers = () => {
-    if (!token || !seasonId) return
-    fetchSeasonUsers(seasonId)
-      .then(setUsers)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load users'))
-  }
-
-  useEffect(loadUsers, [token, seasonId])
-
-  useEffect(() => {
-    if (!token || !seasonId) return
-    fetchSeasonUserStats(seasonId)
-      .then(setStats)
-      .catch(() => setStats(null))
-  }, [token, seasonId])
+  // Pending-payment rows can flip to active from a Paystack webhook or
+  // another admin's action while this page just sits open — poll so that's
+  // visible without a manual refresh.
+  const {
+    data: users = [],
+    error: usersErrObj,
+    mutate: mutateUsers,
+  } = useSWR(canLoad ? ['season-users', seasonId] : null, () => fetchSeasonUsers(seasonId as string), {
+    refreshInterval: 30000,
+  })
+  const { data: stats, mutate: mutateStats } = useSWR(
+    canLoad ? ['season-user-stats', seasonId] : null,
+    () => fetchSeasonUserStats(seasonId as string),
+    { refreshInterval: 30000 }
+  )
+  const error = actionError ?? (usersErrObj ? (usersErrObj instanceof Error ? usersErrObj.message : 'Could not load users') : null)
 
   const handleResetPassword = async (userId: string) => {
     if (!confirm('Issue a new temporary password for this user? Their old password stops working immediately, and the new one is emailed to them.')) {
@@ -57,7 +51,7 @@ export default function UsersPage() {
       const result = await resetUserPassword(userId)
       setResetConfirmation(result.emailed_to)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not reset password')
+      setActionError(err instanceof Error ? err.message : 'Could not reset password')
     } finally {
       setResettingUserId(null)
     }
@@ -73,8 +67,8 @@ export default function UsersPage() {
           message: `${u.full_name}'s payment was confirmed with Paystack — entry is now active.`,
           success: true,
         })
-        loadUsers()
-        if (seasonId) fetchSeasonUserStats(seasonId).then(setStats).catch(() => {})
+        mutateUsers()
+        mutateStats()
       } else if (result.payment_status === 'success') {
         setVerifyResult({ message: `${u.full_name}'s payment was already confirmed.`, success: true })
       } else {
@@ -84,7 +78,7 @@ export default function UsersPage() {
         })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not verify payment')
+      setActionError(err instanceof Error ? err.message : 'Could not verify payment')
     } finally {
       setVerifyingEntryId(null)
     }

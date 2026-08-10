@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason } from '@/lib/season'
-import { fetchNewEntries, fetchStandings, type NewEntryRow, type StandingRow } from '@/lib/api'
+import { fetchNewEntries, fetchStandings } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 import { Select } from '@/components/ui/Select'
 
@@ -12,49 +13,48 @@ export default function StandingsPage() {
   const { token } = useAuth()
   const { seasonId } = useSeason()
   const [tab, setTab] = useState<'standings' | 'new_entries'>('standings')
-
-  const [liveStandings, setLiveStandings] = useState<StandingRow[]>([])
-  const [liveEventId, setLiveEventId] = useState<number | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
-  const [historicalStandings, setHistoricalStandings] = useState<StandingRow[]>([])
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [newEntries, setNewEntries] = useState<NewEntryRow[]>([])
-  const [newEntriesLoading, setNewEntriesLoading] = useState(false)
-  const [newEntriesError, setNewEntriesError] = useState<string | null>(null)
+  const canLoad = Boolean(token) && Boolean(seasonId)
 
-  useEffect(() => {
-    if (!token || !seasonId) return
-    setLoading(true)
-    setError(null)
-    fetchStandings(seasonId)
-      .then((data) => {
-        setLiveStandings(data.results)
-        setLiveEventId(data.event_id)
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load standings'))
-      .finally(() => setLoading(false))
+  // Points move in real time during a gameweek — poll the live view
+  // independent of anything the viewer clicks.
+  const {
+    data: liveData,
+    isLoading: liveLoading,
+    error: liveErrObj,
+  } = useSWR(canLoad ? ['admin-live-standings', seasonId] : null, () => fetchStandings(seasonId as string), {
+    refreshInterval: 30000,
+  })
+  const liveStandings = liveData?.results ?? []
+  const liveEventId = liveData?.event_id ?? null
 
-    setNewEntriesLoading(true)
-    setNewEntriesError(null)
-    fetchNewEntries(seasonId)
-      .then(setNewEntries)
-      .catch((err) => setNewEntriesError(err instanceof Error ? err.message : 'Could not load new entries'))
-      .finally(() => setNewEntriesLoading(false))
-  }, [token, seasonId])
-
-  useEffect(() => {
-    if (!token || !seasonId || selectedEventId == null) return
-    setLoading(true)
-    setError(null)
-    fetchStandings(seasonId, selectedEventId)
-      .then((data) => setHistoricalStandings(data.results))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load standings'))
-      .finally(() => setLoading(false))
-  }, [token, seasonId, selectedEventId])
+  const {
+    data: historicalData,
+    isLoading: historicalLoading,
+    error: historicalErrObj,
+  } = useSWR(
+    canLoad && selectedEventId != null ? ['admin-historical-standings', seasonId, selectedEventId] : null,
+    () => fetchStandings(seasonId as string, selectedEventId as number)
+  )
+  const historicalStandings = historicalData?.results ?? []
 
   const viewingLive = selectedEventId == null
+  const loading = viewingLive ? liveLoading : historicalLoading
+  const errObj = viewingLive ? liveErrObj : historicalErrObj
+  const error = errObj ? (errObj instanceof Error ? errObj.message : 'Could not load standings') : null
+
+  const {
+    data: newEntries = [],
+    isLoading: newEntriesLoading,
+    error: newEntriesErrObj,
+  } = useSWR(canLoad ? ['admin-new-entries', seasonId] : null, () => fetchNewEntries(seasonId as string))
+  const newEntriesError = newEntriesErrObj
+    ? newEntriesErrObj instanceof Error
+      ? newEntriesErrObj.message
+      : 'Could not load new entries'
+    : null
+
   const standings = viewingLive ? liveStandings : historicalStandings
   const eventId = viewingLive ? liveEventId : selectedEventId
 

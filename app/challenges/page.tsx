@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { Loader2, Swords, ShieldCheck, AlertTriangle, RotateCcw, HandCoins } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useSeason } from '@/lib/season'
-import { fetchArbitrationQueue, fetchChallengeStats, resolveChallenge, type Challenge, type ChallengeStats } from '@/lib/api'
+import { fetchArbitrationQueue, fetchChallengeStats, resolveChallenge, type Challenge } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
 import { StatRow, StatTile } from '@/components/StatTile'
 
@@ -22,46 +23,43 @@ type ConfirmTarget =
 export default function ChallengesPage() {
   const { token } = useAuth()
   const { seasonId } = useSeason()
-  const [queue, setQueue] = useState<Challenge[]>([])
-  const [stats, setStats] = useState<ChallengeStats | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null)
 
-  const load = () => {
-    if (!token) return
-    fetchArbitrationQueue()
-      .then(setQueue)
-      .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not load challenges'))
-  }
-
-  useEffect(() => {
-    if (!token || !seasonId) return
-    fetchChallengeStats(seasonId)
-      .then(setStats)
-      .catch(() => setStats(null))
-  }, [token, seasonId])
-
-  useEffect(load, [token])
+  // Another admin could resolve/dispute a challenge while this page just
+  // sits open — poll rather than only refetch on navigation.
+  const {
+    data: queue = [],
+    error: queueErrObj,
+    mutate: mutateQueue,
+  } = useSWR(token ? 'arbitration-queue' : null, fetchArbitrationQueue, { refreshInterval: 30000 })
+  const { data: stats, mutate: mutateStats } = useSWR(
+    token && seasonId ? ['challenge-stats', seasonId] : null,
+    () => fetchChallengeStats(seasonId as string),
+    { refreshInterval: 30000 }
+  )
+  const message =
+    actionMessage ?? (queueErrObj ? (queueErrObj instanceof Error ? queueErrObj.message : 'Could not load challenges') : null)
 
   const confirmResolve = async () => {
     if (!confirmTarget) return
     const { challenge } = confirmTarget
     setConfirmTarget(null)
     setBusyId(challenge.id)
-    setMessage(null)
+    setActionMessage(null)
     try {
       if (confirmTarget.action === 'declare_winner') {
         await resolveChallenge(challenge.id, { action: 'declare_winner', winner_league_entry_id: confirmTarget.winnerLeagueEntryId })
-        setMessage(`Resolved — ${confirmTarget.winnerLabel} wins.`)
+        setActionMessage(`Resolved — ${confirmTarget.winnerLabel} wins.`)
       } else {
         await resolveChallenge(challenge.id, { action: 'refund_both' })
-        setMessage('Both stakes refunded.')
+        setActionMessage('Both stakes refunded.')
       }
-      load()
-      if (seasonId) fetchChallengeStats(seasonId).then(setStats).catch(() => {})
+      mutateQueue()
+      mutateStats()
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Resolution failed')
+      setActionMessage(err instanceof Error ? err.message : 'Resolution failed')
     } finally {
       setBusyId(null)
     }

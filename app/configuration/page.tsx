@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { Loader2, Save, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { fetchSeasons, updateSeason, fetchAdminPrizePool, type Season, type PrizePoolConfig, type PrizePoolBreakdown } from '@/lib/api'
@@ -47,27 +48,43 @@ const PRIZE_PERCENT_FIELDS: { key: keyof PrizePoolConfig['season_prizes']; label
 
 export default function ConfigurationPage() {
   const { token } = useAuth()
-  const [seasons, setSeasons] = useState<Season[]>([])
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({})
-  const [breakdowns, setBreakdowns] = useState<Record<string, PrizePoolBreakdown>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const load = () => {
-    if (!token) return
-    fetchSeasons()
-      .then((data) => {
-        setSeasons(data)
-        setDrafts(Object.fromEntries(data.map((s) => [s.id, toDraft(s)])))
-        Promise.all(data.map((s) => fetchAdminPrizePool(s.id).then((b) => [s.id, b] as const)))
-          .then((pairs) => setBreakdowns(Object.fromEntries(pairs)))
-          .catch(() => {})
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load seasons'))
-  }
+  const {
+    data: seasons = [],
+    error: seasonsErrObj,
+    mutate: mutateSeasons,
+  } = useSWR(token ? 'seasons' : null, fetchSeasons)
+  const error = actionError ?? (seasonsErrObj ? (seasonsErrObj instanceof Error ? seasonsErrObj.message : 'Could not load seasons') : null)
 
-  useEffect(load, [token])
+  const { data: breakdowns = {} } = useSWR(
+    token && seasons.length > 0 ? ['admin-prize-pool-breakdowns', seasons.map((s) => s.id).join(',')] : null,
+    async () => {
+      const pairs = await Promise.all(seasons.map((s) => fetchAdminPrizePool(s.id).then((b) => [s.id, b] as const)))
+      return Object.fromEntries(pairs) as Record<string, PrizePoolBreakdown>
+    }
+  )
+
+  // Merge-only: a season already drafted keeps whatever the admin's
+  // actively editing, even if `seasons` silently revalidates in the
+  // background (tab refocus etc.) — only a season we've never seen before
+  // gets a fresh draft seeded from the server.
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({})
+  useEffect(() => {
+    setDrafts((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const s of seasons) {
+        if (!next[s.id]) {
+          next[s.id] = toDraft(s)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [seasons])
 
   const setDraft = (seasonId: string, patch: Partial<Draft>) => {
     setDrafts((prev) => ({ ...prev, [seasonId]: { ...prev[seasonId], ...patch } }))
@@ -89,9 +106,9 @@ export default function ConfigurationPage() {
     if (!draft) return
     setSavingId(seasonId)
     setSavedId(null)
-    setError(null)
+    setActionError(null)
     try {
-      await updateSeason(seasonId, {
+      const updated = await updateSeason(seasonId, {
         season_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
         entry_fee_kobo: Math.round(draft.entryFeeNaira * 100),
         challenge_weekly_limit: draft.weeklyLimit,
@@ -108,9 +125,13 @@ export default function ConfigurationPage() {
         },
       })
       setSavedId(seasonId)
-      load()
+      // Re-seed just this season's draft from what the server actually
+      // stored (e.g. normalized values) — the merge-only effect above
+      // won't touch an existing draft, so this has to happen explicitly.
+      setDrafts((prev) => ({ ...prev, [seasonId]: toDraft(updated) }))
+      mutateSeasons()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save')
+      setActionError(err instanceof Error ? err.message : 'Could not save')
     } finally {
       setSavingId(null)
     }

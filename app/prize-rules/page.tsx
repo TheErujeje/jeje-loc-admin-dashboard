@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { Loader2, Plus, Pencil, Check, X, Trophy, Settings, Trash2, Save } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
@@ -14,8 +15,6 @@ import {
   fetchSeasons,
   updateSeason,
   type PrizeRule,
-  type PrizePoolBreakdown,
-  type Season,
   type PrizePoolConfig,
 } from '@/lib/api'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -60,9 +59,21 @@ function formatNaira(kobo: number) {
 export default function PrizeRulesPage() {
   const { token } = useAuth()
   const { seasonId } = useSeason()
-  const [rules, setRules] = useState<PrizeRule[]>([])
-  const [pool, setPool] = useState<PrizePoolBreakdown | null>(null)
-  const [season, setSeason] = useState<Season | null>(null)
+  const canLoad = Boolean(token) && Boolean(seasonId)
+
+  const {
+    data: rules = [],
+    error: rulesErrObj,
+    mutate: mutateRules,
+  } = useSWR(canLoad ? ['prize-rules', seasonId] : null, () => fetchPrizeRules(seasonId as string))
+  const { data: pool, mutate: mutatePool } = useSWR(canLoad ? ['admin-prize-pool', seasonId] : null, () =>
+    fetchAdminPrizePool(seasonId as string)
+  )
+  // Shares the 'seasons' cache key with the Configuration page — navigating
+  // between the two reuses the same cached list instead of refetching.
+  const { data: seasons = [], mutate: mutateSeasons } = useSWR(token ? 'seasons' : null, fetchSeasons)
+  const season = seasons.find((s) => s.id === seasonId) || null
+
   const [percentDraft, setPercentDraft] = useState<PrizePoolConfig['season_prizes'] | null>(null)
   const [editingPercents, setEditingPercents] = useState(false)
   const [savingPercents, setSavingPercents] = useState(false)
@@ -75,35 +86,26 @@ export default function PrizeRulesPage() {
     amount_naira: 0,
   })
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const load = async () => {
-    if (!token || !seasonId) return
-    const [ruleRows, breakdown, seasons] = await Promise.all([
-      fetchPrizeRules(seasonId),
-      fetchAdminPrizePool(seasonId),
-      fetchSeasons(),
-    ])
-    setRules(ruleRows)
-    setPool(breakdown)
-    const currentSeason = seasons.find((s) => s.id === seasonId) || null
-    setSeason(currentSeason)
-    setPercentDraft(currentSeason ? { ...currentSeason.prize_pool_config.season_prizes } : null)
-  }
+  const error = actionError ?? (rulesErrObj ? (rulesErrObj instanceof Error ? rulesErrObj.message : 'Could not load prize rules') : null)
 
+  // Skipped while actively editing so a background revalidation (tab
+  // refocus etc.) can't stomp percentages the admin hasn't saved yet.
   useEffect(() => {
-    load().catch((err) => setError(err instanceof Error ? err.message : 'Could not load prize rules'))
-  }, [token, seasonId])
+    if (!season || editingPercents) return
+    setPercentDraft({ ...season.prize_pool_config.season_prizes })
+  }, [season, editingPercents])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!token || !seasonId) return
     setSubmitting(true)
-    setError(null)
+    setActionError(null)
     try {
       await createPrizeRule({
         season_id: seasonId,
@@ -114,9 +116,10 @@ export default function PrizeRulesPage() {
         amount_kobo: Math.round(form.amount_naira * 100),
       })
       setForm({ label: '', scope: 'gameweek', competition_type: 'classic', rank_target: 1, amount_naira: 0 })
-      await load()
+      mutateRules()
+      mutatePool()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create prize rule')
+      setActionError(err instanceof Error ? err.message : 'Could not create prize rule')
     } finally {
       setSubmitting(false)
     }
@@ -126,7 +129,7 @@ export default function PrizeRulesPage() {
     if (!seasonId || !season || !percentDraft) return
     setSavingPercents(true)
     setPercentsSaved(false)
-    setError(null)
+    setActionError(null)
     try {
       await updateSeason(seasonId, {
         prize_pool_config: {
@@ -137,16 +140,17 @@ export default function PrizeRulesPage() {
       })
       setPercentsSaved(true)
       setEditingPercents(false)
-      await load()
+      mutateSeasons()
+      mutatePool()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save percentages')
+      setActionError(err instanceof Error ? err.message : 'Could not save percentages')
     } finally {
       setSavingPercents(false)
     }
   }
 
   const startEditPercents = () => {
-    setError(null)
+    setActionError(null)
     setPercentsSaved(false)
     setPercentDraft(season ? { ...season.prize_pool_config.season_prizes } : null)
     setEditingPercents(true)
@@ -158,7 +162,7 @@ export default function PrizeRulesPage() {
   }
 
   const startEdit = (r: PrizeRule) => {
-    setError(null)
+    setActionError(null)
     setEditingId(r.id)
     setEditForm(toEditForm(r))
   }
@@ -170,13 +174,14 @@ export default function PrizeRulesPage() {
 
   const handleDelete = async (r: PrizeRule) => {
     if (!confirm(`Delete "${r.label}"? This can't be undone.`)) return
-    setError(null)
+    setActionError(null)
     setDeletingId(r.id)
     try {
       await deletePrizeRule(r.id)
-      await load()
+      mutateRules()
+      mutatePool()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete prize')
+      setActionError(err instanceof Error ? err.message : 'Could not delete prize')
     } finally {
       setDeletingId(null)
     }
@@ -185,7 +190,7 @@ export default function PrizeRulesPage() {
   const saveEdit = async () => {
     if (!editingId || !editForm) return
     setSavingEdit(true)
-    setError(null)
+    setActionError(null)
     try {
       await updatePrizeRule(editingId, {
         label: editForm.label,
@@ -196,9 +201,10 @@ export default function PrizeRulesPage() {
         is_active: editForm.is_active,
       })
       cancelEdit()
-      await load()
+      mutateRules()
+      mutatePool()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update prize rule')
+      setActionError(err instanceof Error ? err.message : 'Could not update prize rule')
     } finally {
       setSavingEdit(false)
     }
